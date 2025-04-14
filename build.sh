@@ -1,37 +1,21 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -o errexit
+echo "Starting Vercel build process with minimal dependencies..."
 
-# Determine if we're on Vercel
-if [ -n "${VERCEL}" ]; then
-  echo "Running on Vercel. Using minimal dependencies."
-  # Use minimal requirements for Vercel
-  pip3 install --no-cache-dir -r requirements-vercel.txt
-else
-  echo "Running locally or on another platform. Using full dependencies."
-  # Use full requirements for local/other environments
-  pip3 install --no-cache-dir -r requirements.txt
-fi
+# Install only what's needed for serving the web app
+pip3 install --no-cache-dir -r requirements-vercel.txt
 
-# Install SQLite alternative for Vercel (specify --no-deps to avoid dependency conflicts)
+# Install SQLite alternative
 pip3 install --no-cache-dir pysqlite3-binary==0.5.4 --no-deps
 
-# Optimize packages: try to find and remove unnecessary files if possible
-if [ -n "$VIRTUAL_ENV" ]; then
-  echo "Cleaning up virtual environment at $VIRTUAL_ENV"
-  find $VIRTUAL_ENV -name "tests" -type d -exec rm -rf {} \; 2>/dev/null || true
-  find $VIRTUAL_ENV -name "examples" -type d -exec rm -rf {} \; 2>/dev/null || true
-  find $VIRTUAL_ENV -name "docs" -type d -exec rm -rf {} \; 2>/dev/null || true
-else
-  echo "VIRTUAL_ENV not defined, skipping cleanup"
-fi
-
-# Clear pip cache
-pip3 cache purge || true
+# Clean up any temporary files
+rm -rf /tmp/*
 
 # Collect static files
 python3 manage.py collectstatic --noinput --clear
 
-# Run migrations if needed
+# Run migrations (for database structure only)
 python3 manage.py makemigrations
 python3 manage.py migrate
+
+echo "Vercel build process completed" 
