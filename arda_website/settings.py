@@ -34,7 +34,7 @@ SECRET_KEY = 'django-insecure-)(wsm7o+&ka)@zi-a@kt&x^5z(m^84qn0j#dng#5_ga#p!#%^r
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*', 'arda-website.vercel.app', '.vercel.app']
 
 # Application definition
 

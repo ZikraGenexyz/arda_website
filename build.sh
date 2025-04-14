@@ -12,5 +12,5 @@ pip3 install pysqlite3-binary==0.5.4 --no-deps
 python3 manage.py collectstatic --noinput
 
 # Uncomment if you need to run migrations during build
-# python3 manage.py makemigrations
-# python3 manage.py migrate
+python3 manage.py makemigrations
+python3 manage.py migrate
