@@ -1,28 +1,18 @@
-# Django and web server
 asgiref==3.8.1
-Django==5.2
-gunicorn==21.2.0
-sqlparse==0.5.3
-whitenoise==6.6.0
-
-# Database
-dj-database-url==2.1.0
-psycopg2-binary==2.9.9
-
-# Image and video processing
-numpy==1.26.4
-opencv-python-headless==4.9.0.80
-Pillow==10.3.0
-imageio==2.37.0
-imageio-ffmpeg==0.6.0
-decorator==4.4.2
-proglog==0.1.11
-tqdm==4.67.1
-
-# Networking and utilities
 certifi==2025.1.31
 charset-normalizer==3.4.1
+decorator==4.4.2
+Django==5.2
 idna==3.10
-python-dotenv==1.0.1
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
+numpy==2.2.4
+opencv-python==4.11.0.86
+pillow==10.4.0
+proglog==0.1.11
+python-dotenv==1.1.0
 requests==2.32.3
+sqlparse==0.5.3
+tqdm==4.67.1
 urllib3==2.4.0
+whitenoise==6.9.0

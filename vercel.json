@@ -1,7 +1,7 @@
 {
     "builds": [
     {
-      "src": "arda_website/wsgi.py",
+      "src": "arda_app/wsgi.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "15mb", "runtime": "python3.12" }
     },
@@ -20,10 +20,7 @@
     },
     {
         "src": "/(.*)",
-        "dest": "arda_website/wsgi.py"
+        "dest": "arda_app/wsgi.py"
     }
-    ],
-    "env": {
-        "VERCEL": "1"
-    }
+    ]
 }
