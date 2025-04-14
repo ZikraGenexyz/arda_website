@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #333;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            animation: fadeIn 1s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .greeting {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            color: #666;
+        }
+        
+        .username {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .download-btn {
+            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.4);
+            margin-top: 2rem;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(74, 108, 247, 0.5);
+        }
+        
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Progress bar styles */
+        .progress-container {
+            display: none;
+            width: 100%;
+            margin-top: 2rem;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.5s ease;
+            margin-bottom: 10px;
+        }
+        
+        .progress-text {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        /* Animation for loading indicator */
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+        
+        .loading-indicator {
+            display: inline-block;
+            font-size: 1.2rem;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="greeting">Hello</div>
+        <div class="username" id="username">Guest</div>
+        <button class="download-btn" id="downloadBtn">
+            <span>Download</span>
+        </button>
+        
+        <!-- Progress bar elements -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-text">
+                <span id="progressText">Processing video...</span>
+                <span class="loading-indicator">⏳</span>
+            </div>
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+    </div>
+
+    <script>
+        // Function to get URL parameters
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Get username from URL parameters
+        document.addEventListener('DOMContentLoaded', function() {
+            const usernameParam = getUrlParameter('username');
+            if (usernameParam) {
+                document.getElementById('username').textContent = usernameParam;
+            }
+            
+            // Set up download button click handler
+            document.getElementById('downloadBtn').addEventListener('click', function() {
+                handleDownload();
+            });
+        });
+
+        // Track if we're using real progress updates
+        let usingRealProgress = false;
+        
+        // Simulate progress animation
+        function simulateProgress() {
+            const progressBar = document.getElementById('progressBar');
+            let width = 0;
+            const maxWidth = 80; // Lower max width to avoid getting ahead of real progress
+            
+            // Reset to 0
+            progressBar.style.width = '0%';
+            
+            // Gradually increase width, but more slowly
+            const interval = setInterval(() => {
+                // Stop the simulation if we've switched to real progress
+                if (usingRealProgress) {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                if (width >= maxWidth) {
+                    clearInterval(interval);
+                    document.getElementById('progressText').textContent = 'Waiting for server...';
+                } else {
+                    // Even slower increment
+                    width += 0.2;
+                    progressBar.style.width = width + '%';
+                }
+            }, 150);
+            
+            return interval;
+        }
+        
+        // Function to handle the download process
+        function handleDownload() {
+            // Get the username
+            const username = document.getElementById('username').textContent;
+            
+            // Reset state for new download
+            usingRealProgress = false;
+            
+            // Show progress container and reset its content
+            const progressContainer = document.getElementById('progressContainer');
+            progressContainer.style.display = 'block';
+            progressContainer.innerHTML = `
+                <div class="progress-text">
+                    <span id="progressText">Processing video...</span>
+                    <span class="loading-indicator">⏳</span>
+                </div>
+                <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+            `;
+            
+            // Hide the download button temporarily
+            document.getElementById('downloadBtn').style.display = 'none';
+            
+            // Start progress animation
+            const progressInterval = simulateProgress();
+            
+            // First, call start_process to get a progress ID
+            fetch(`{% url 'start_process' %}?username=${encodeURIComponent(username)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to start processing');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const progressId = data.progress_id;
+                    
+                    // Function to check progress
+                    function checkProgress() {
+                        fetch(`{% url 'get_progress' %}?id=${encodeURIComponent(progressId)}`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Failed to get progress');
+                                }
+                                return response.json();
+                            })
+                            .then(progressData => {
+                                // Set flag that we're using real progress
+                                usingRealProgress = true;
+                                
+                                // Clear the interval if it's still running
+                                if (progressInterval) {
+                                    clearInterval(progressInterval);
+                                }
+                                
+                                // Update progress bar with actual progress
+                                document.getElementById('progressBar').style.width = `${progressData.progress}%`;
+                                document.getElementById('progressText').textContent = progressData.status;
+                                
+                                if (progressData.ready) {
+                                    // If processing is complete, download the file
+                                    if (progressInterval) {
+                                        clearInterval(progressInterval);
+                                    }
+                                    
+                                    // Create download URL with progress ID
+                                    const downloadUrl = `{% url 'download' %}?id=${encodeURIComponent(progressId)}`;
+                                    
+                                    // Download the file
+                                    fetch(downloadUrl)
+                                        .then(response => {
+                                            if (!response.ok) {
+                                                throw new Error('Network response was not ok');
+                                            }
+                                            
+                                            // Set progress to 100%
+                                            document.getElementById('progressBar').style.width = '100%';
+                                            document.getElementById('progressText').textContent = 'Download ready!';
+                                            
+                                            // Get the filename from Content-Disposition header if possible
+                                            let filename = `overlay_${username}.mp4`;
+                                            const disposition = response.headers.get('Content-Disposition');
+                                            if (disposition && disposition.includes('filename=')) {
+                                                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                                                const matches = filenameRegex.exec(disposition);
+                                                if (matches != null && matches[1]) {
+                                                    filename = matches[1].replace(/['"]/g, '');
+                                                }
+                                            }
+                                            
+                                            return response.blob().then(blob => {
+                                                return { blob, filename };
+                                            });
+
+                                            setTimeout(() => {
+                                                window.close(); // Close the tab
+                                            }, 1000);
+                                        })
+                                        .then(({ blob, filename }) => {
+                                            // Add another short delay before initiating download
+                                            // This allows users to see the 100% complete state
+                                            setTimeout(() => {
+                                                // Create a download link
+                                                const url = window.URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.style.display = 'none';
+                                                a.href = url;
+                                                a.download = filename;
+                                                document.body.appendChild(a);
+                                                
+                                                // Trigger download
+                                                a.click();
+                                                
+                                                // Clean up
+                                                window.URL.revokeObjectURL(url);
+                                                document.body.removeChild(a);
+                                                
+                                                // Show download complete message
+                                                document.getElementById('progressText').textContent = 'Download complete!';
+                                                
+                                                // Show the download button again
+                                                setTimeout(() => {
+                                                    document.getElementById('downloadBtn').style.display = 'inline-block';
+                                                    
+                                                    // Reset progress container to original state
+                                                    progressContainer.style.display = 'none';
+                                                    
+                                                    // Restore progress container to original state for next download
+                                                    progressContainer.innerHTML = `
+                                                        <div class="progress-text">
+                                                            <span id="progressText">Processing video...</span>
+                                                            <span class="loading-indicator">⏳</span>
+                                                        </div>
+                                                        <div class="progress-bar" id="progressBar"></div>
+                                                    `;
+                                                }, 2000);
+                                            }, 1000); // 1 second delay before download starts
+                                        })
+                                        .catch(error => {
+                                            console.error('Download failed:', error);
+                                            document.getElementById('progressText').textContent = 'Error processing video. Please try again.';
+                                            document.getElementById('progressBar').style.width = '0%';
+                                            
+                                            // Show the download button again
+                                            setTimeout(() => {
+                                                document.getElementById('downloadBtn').style.display = 'inline-block';
+                                            }, 2000);
+                                        });
+                                } else {
+                                    // If not ready, check again after 1 second
+                                    setTimeout(checkProgress, 1000);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error checking progress:', error);
+                                // Clear interval if it exists
+                                if (typeof progressInterval !== 'undefined' && progressInterval) {
+                                    clearInterval(progressInterval);
+                                }
+                                document.getElementById('progressText').textContent = 'Error checking progress. Please try again.';
+                                
+                                // Show the download button again
+                                setTimeout(() => {
+                                    document.getElementById('downloadBtn').style.display = 'inline-block';
+                                    progressContainer.style.display = 'none';
+                                }, 2000);
+                            });
+                    }
+                    
+                    // Start checking progress
+                    checkProgress();
+                })
+                .catch(error => {
+                    console.error('Failed to start processing:', error);
+                    // Clear interval if it exists
+                    if (typeof progressInterval !== 'undefined' && progressInterval) {
+                        clearInterval(progressInterval);
+                    }
+                    document.getElementById('progressText').textContent = 'Error starting process. Please try again.';
+                    document.getElementById('progressBar').style.width = '0%';
+                    
+                    // Show the download button again
+                    setTimeout(() => {
+                        document.getElementById('downloadBtn').style.display = 'inline-block';
+                        progressContainer.style.display = 'none';
+                    }, 2000);
+                });
+        }
+    </script>
+</body>
+</html>
