@@ -1,13 +1,9 @@
 {
     "builds": [
     {
-      "src": "arda_website/wsgi.py",
+      "src": "arda_app/wsgi.py",
       "use": "@vercel/python",
-      "config": { 
-        "maxLambdaSize": "15mb", 
-        "runtime": "python3.12",
-        "buildCommand": "pip3 install --no-cache-dir -r requirements-vercel.txt && pip3 install --no-cache-dir pysqlite3-binary==0.5.4 --no-deps && python3 manage.py collectstatic --noinput"
-      }
+      "config": { "maxLambdaSize": "15mb", "runtime": "python3.12" }
     },
     {
       "src": "build.sh",
@@ -23,19 +19,8 @@
         "dest": "/static/$1"
     },
     {
-        "handle": "filesystem"
-    },
-    {
         "src": "/(.*)",
-        "dest": "arda_website/wsgi.py"
+        "dest": "arda_app/wsgi.py"
     }
-    ],
-    "env": {
-      "IS_VERCEL": "true",
-      "DISABLE_VIDEO_PROCESSING": "true",
-      "PYTHON_VERSION": "3.12",
-      "PIP_NO_CACHE_DIR": "true",
-      "PIP_NO_DEPENDENCIES": "true",
-      "DEBUG": "true"
-    }
+    ]
 }

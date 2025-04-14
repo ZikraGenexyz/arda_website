@@ -4,35 +4,18 @@ import os
 import tempfile
 import threading
 import time
+import numpy as np
 from pathlib import Path
-import json
-
-# Check if running on Vercel
-IS_VERCEL = os.environ.get('IS_VERCEL', 'false').lower() == 'true'
-DISABLE_VIDEO_PROCESSING = os.environ.get('DISABLE_VIDEO_PROCESSING', 'false').lower() == 'true'
 
 # Import Pillow for image manipulation
 from PIL import Image, ImageDraw, ImageFont
 
-# Only import OpenCV and Numpy if not on Vercel
-if not IS_VERCEL and not DISABLE_VIDEO_PROCESSING:
-    try:
-        import cv2
-        import numpy as np
-        VIDEO_PROCESSING_AVAILABLE = True
-    except ImportError:
-        VIDEO_PROCESSING_AVAILABLE = False
-else:
-    VIDEO_PROCESSING_AVAILABLE = False
+# Import OpenCV
+import cv2
 
 # Create your views here.
 def home(request):
-    # Pass environment info to the template
-    context = {
-        'video_processing_available': VIDEO_PROCESSING_AVAILABLE,
-        'is_vercel': IS_VERCEL
-    }
-    return render(request, 'index.html', context)
+    return render(request, 'index.html')
 
 # Global progress tracking dictionary
 PROGRESS_DATA = {}
@@ -257,33 +240,6 @@ def generate_static_fallback(video_path, output_path, progress_id, target_width=
 def process_video(username, video_path, frame_path, output_path, progress_id):
     """Process video in a separate thread"""
     try:
-        # Check if we're on Vercel or video processing is disabled
-        if IS_VERCEL or DISABLE_VIDEO_PROCESSING or not VIDEO_PROCESSING_AVAILABLE:
-            # Create a message indicating video processing is disabled in this environment
-            PROGRESS_DATA[progress_id]['status'] = "Video processing is not available on this deployment"
-            PROGRESS_DATA[progress_id]['error'] = "Feature not available on this server"
-            
-            # Generate a static image instead
-            img = Image.new('RGB', (800, 600), (0, 0, 0))
-            draw = ImageDraw.Draw(img)
-            font = ImageFont.load_default()
-            message = f"Hello {username}!\n\nVideo processing is not available on this server.\nPlease use the desktop version for full functionality."
-            draw.text((img.width//2 - 200, img.height//2 - 50), message, fill=(255, 255, 255))
-            
-            # Save as JPEG
-            output_image = output_path.replace('.mp4', '.jpg')
-            img.save(output_image)
-            
-            # Update progress data
-            PROGRESS_DATA[progress_id]['output_path'] = output_image
-            PROGRESS_DATA[progress_id]['is_image'] = True
-            PROGRESS_DATA[progress_id]['ready'] = True
-            PROGRESS_DATA[progress_id]['progress'] = 100
-            PROGRESS_DATA[progress_id]['status'] = "Complete (static message)"
-            
-            return
-            
-        # Continue with normal video processing if not on Vercel
         # Check if files exist
         if not os.path.exists(video_path):
             try:
@@ -366,8 +322,8 @@ def process_video(username, video_path, frame_path, output_path, progress_id):
         cap.release()
         
         # Calculate half size dimensions
-        width = original_width // 2
-        height = original_height // 2
+        width = original_width // 3
+        height = original_height // 3
         
         # Log the dimensions
         print(f"Original video dimensions: {original_width}x{original_height}")
@@ -673,36 +629,3 @@ def download(request):
         error_msg = f"Error serving file: {str(e)}"
         print(error_msg)
         return JsonResponse({'error': error_msg}, status=500)
-
-# Custom 404 handler
-def custom_404(request, exception=None):
-    """
-    Custom 404 error handler that logs additional debug information
-    """
-    import sys
-    import traceback
-    
-    # Print debug information to logs
-    print("DEBUG: 404 Error Handler Called")
-    print(f"DEBUG: Request URL: {request.build_absolute_uri()}")
-    print(f"DEBUG: Request Method: {request.method}")
-    print(f"DEBUG: Exception: {exception}")
-    
-    # Check if this is a query parameter issue
-    query_params = request.GET.dict()
-    if query_params:
-        print(f"DEBUG: Query parameters found: {query_params}")
-        if 'username' in query_params:
-            print(f"DEBUG: Username parameter: {query_params['username']}")
-            
-            # Try redirecting to the home page with the username 
-            from django.shortcuts import redirect
-            try:
-                return redirect(f"/?username={query_params['username']}")
-            except Exception as e:
-                print(f"DEBUG: Redirect failed: {e}")
-    
-    # Return the custom 404 page
-    from django.shortcuts import render
-    response = render(request, '404.html', status=404)
-    return response
