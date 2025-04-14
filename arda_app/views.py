@@ -366,8 +366,8 @@ def process_video(username, video_path, frame_path, output_path, progress_id):
         cap.release()
         
         # Calculate half size dimensions
-        width = original_width // 3
-        height = original_height // 3
+        width = original_width // 2
+        height = original_height // 2
         
         # Log the dimensions
         print(f"Original video dimensions: {original_width}x{original_height}")

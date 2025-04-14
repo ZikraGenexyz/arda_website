@@ -71,3 +71,14 @@ coverage.xml
 media/
 static/
 README.md
+
+# Ignore everything by default
+*
+
+# But allow these files
+!build-static.sh
+!vercel.json
+!index.html
+
+# Allow the static output directory to be included
+!staticfiles/

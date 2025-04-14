@@ -6,7 +6,7 @@
       "config": { 
         "maxLambdaSize": "15mb", 
         "runtime": "python3.12",
-        "buildCommand": "./vercel-build.sh"
+        "buildCommand": "pip3 install --no-cache-dir -r requirements-vercel.txt && pip3 install --no-cache-dir pysqlite3-binary==0.5.4 --no-deps && python3 manage.py collectstatic --noinput"
       }
     },
     {
