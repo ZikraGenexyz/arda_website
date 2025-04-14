@@ -3,7 +3,11 @@
     {
       "src": "arda_app/wsgi.py",
       "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb", "runtime": "python3.12" }
+      "config": { 
+        "maxLambdaSize": "15mb", 
+        "runtime": "python3.12",
+        "buildCommand": "pip install pysqlite3-binary && python manage.py collectstatic --noinput"
+      }
     },
     {
       "src": "build.sh",

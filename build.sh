@@ -2,10 +2,15 @@
 
 set -o errexit
 
-pip3 install -r requirements.txt
+# Install all dependencies
+pip install -r requirements.txt
 
-python3 manage.py collectstatic --noinput
+# Install SQLite alternative for Vercel
+pip install pysqlite3-binary
 
-# python3 manage.py makemigrations
+# Collect static files
+python manage.py collectstatic --noinput
 
-# python3 manage.py migrate
+# Uncomment if you need to run migrations during build
+# python manage.py makemigrations
+# python manage.py migrate
