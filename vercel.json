@@ -23,8 +23,7 @@
         "dest": "/static/$1"
     },
     {
-        "src": "/\\?(.+)",
-        "dest": "arda_website/wsgi.py"
+        "handle": "filesystem"
     },
     {
         "src": "/(.*)",
