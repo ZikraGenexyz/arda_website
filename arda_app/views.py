@@ -4,18 +4,35 @@ import os
 import tempfile
 import threading
 import time
-import numpy as np
 from pathlib import Path
+import json
+
+# Check if running on Vercel
+IS_VERCEL = os.environ.get('IS_VERCEL', 'false').lower() == 'true'
+DISABLE_VIDEO_PROCESSING = os.environ.get('DISABLE_VIDEO_PROCESSING', 'false').lower() == 'true'
 
 # Import Pillow for image manipulation
 from PIL import Image, ImageDraw, ImageFont
 
-# Import OpenCV
-import cv2
+# Only import OpenCV and Numpy if not on Vercel
+if not IS_VERCEL and not DISABLE_VIDEO_PROCESSING:
+    try:
+        import cv2
+        import numpy as np
+        VIDEO_PROCESSING_AVAILABLE = True
+    except ImportError:
+        VIDEO_PROCESSING_AVAILABLE = False
+else:
+    VIDEO_PROCESSING_AVAILABLE = False
 
 # Create your views here.
 def home(request):
-    return render(request, 'index.html')
+    # Pass environment info to the template
+    context = {
+        'video_processing_available': VIDEO_PROCESSING_AVAILABLE,
+        'is_vercel': IS_VERCEL
+    }
+    return render(request, 'index.html', context)
 
 # Global progress tracking dictionary
 PROGRESS_DATA = {}
@@ -240,6 +257,33 @@ def generate_static_fallback(video_path, output_path, progress_id, target_width=
 def process_video(username, video_path, frame_path, output_path, progress_id):
     """Process video in a separate thread"""
     try:
+        # Check if we're on Vercel or video processing is disabled
+        if IS_VERCEL or DISABLE_VIDEO_PROCESSING or not VIDEO_PROCESSING_AVAILABLE:
+            # Create a message indicating video processing is disabled in this environment
+            PROGRESS_DATA[progress_id]['status'] = "Video processing is not available on this deployment"
+            PROGRESS_DATA[progress_id]['error'] = "Feature not available on this server"
+            
+            # Generate a static image instead
+            img = Image.new('RGB', (800, 600), (0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.load_default()
+            message = f"Hello {username}!\n\nVideo processing is not available on this server.\nPlease use the desktop version for full functionality."
+            draw.text((img.width//2 - 200, img.height//2 - 50), message, fill=(255, 255, 255))
+            
+            # Save as JPEG
+            output_image = output_path.replace('.mp4', '.jpg')
+            img.save(output_image)
+            
+            # Update progress data
+            PROGRESS_DATA[progress_id]['output_path'] = output_image
+            PROGRESS_DATA[progress_id]['is_image'] = True
+            PROGRESS_DATA[progress_id]['ready'] = True
+            PROGRESS_DATA[progress_id]['progress'] = 100
+            PROGRESS_DATA[progress_id]['status'] = "Complete (static message)"
+            
+            return
+            
+        # Continue with normal video processing if not on Vercel
         # Check if files exist
         if not os.path.exists(video_path):
             try:
