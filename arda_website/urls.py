@@ -16,8 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('arda_app.urls')),
+    # Add a catch-all route
+    path('not-found/', TemplateView.as_view(template_name='404.html'), name='not_found'),
 ]
+
+# Custom error handler
+handler404 = 'arda_app.views.custom_404'

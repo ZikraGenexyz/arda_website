@@ -35,6 +35,7 @@
       "DISABLE_VIDEO_PROCESSING": "true",
       "PYTHON_VERSION": "3.12",
       "PIP_NO_CACHE_DIR": "true",
-      "PIP_NO_DEPENDENCIES": "true"
+      "PIP_NO_DEPENDENCIES": "true",
+      "DEBUG": "true"
     }
 }

@@ -673,3 +673,36 @@ def download(request):
         error_msg = f"Error serving file: {str(e)}"
         print(error_msg)
         return JsonResponse({'error': error_msg}, status=500)
+
+# Custom 404 handler
+def custom_404(request, exception=None):
+    """
+    Custom 404 error handler that logs additional debug information
+    """
+    import sys
+    import traceback
+    
+    # Print debug information to logs
+    print("DEBUG: 404 Error Handler Called")
+    print(f"DEBUG: Request URL: {request.build_absolute_uri()}")
+    print(f"DEBUG: Request Method: {request.method}")
+    print(f"DEBUG: Exception: {exception}")
+    
+    # Check if this is a query parameter issue
+    query_params = request.GET.dict()
+    if query_params:
+        print(f"DEBUG: Query parameters found: {query_params}")
+        if 'username' in query_params:
+            print(f"DEBUG: Username parameter: {query_params['username']}")
+            
+            # Try redirecting to the home page with the username 
+            from django.shortcuts import redirect
+            try:
+                return redirect(f"/?username={query_params['username']}")
+            except Exception as e:
+                print(f"DEBUG: Redirect failed: {e}")
+    
+    # Return the custom 404 page
+    from django.shortcuts import render
+    response = render(request, '404.html', status=404)
+    return response
