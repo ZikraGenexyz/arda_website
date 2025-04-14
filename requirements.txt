@@ -10,7 +10,7 @@ numpy==2.2.4
 opencv-python==4.11.0.86
 pillow==10.4.0
 proglog==0.1.11
-pysqlite3-binary==0.5.2
+pysqlite3-binary==0.5.4
 python-dotenv==1.1.0
 requests==2.32.3
 sqlparse==0.5.3

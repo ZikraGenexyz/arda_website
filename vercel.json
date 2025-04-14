@@ -6,7 +6,7 @@
       "config": { 
         "maxLambdaSize": "15mb", 
         "runtime": "python3.12",
-        "buildCommand": "pip install pysqlite3-binary && python manage.py collectstatic --noinput"
+        "buildCommand": "pip3 install pysqlite3-binary==0.5.4 --no-deps && python3 manage.py collectstatic --noinput"
       }
     },
     {

@@ -17,7 +17,7 @@ import sys
 # SQLite fix for Vercel
 try:
     import pysqlite3
-    sys.modules['sqlite3'] = pysqlite3
+    sys.modules['sqlite3'] = sys.modules.get('pysqlite3')
 except ImportError:
     pass
 
