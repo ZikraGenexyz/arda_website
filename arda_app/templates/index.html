@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
+    <title>Processing Your Video</title>
     <style>
         * {
             margin: 0;
@@ -38,413 +38,263 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        .greeting {
-            font-size: 2rem;
-            font-weight: 300;
-            margin-bottom: 1rem;
-            color: #666;
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #444;
         }
         
         .username {
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: 700;
-            margin-bottom: 2rem;
-            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            margin-bottom: 1.5rem;
+            color: #4a6cf7;
+            animation: pulse 2s infinite;
         }
         
-        .download-btn {
-            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
-            color: white;
-            border: none;
-            padding: 15px 30px;
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        p {
+            margin-bottom: 1.5rem;
+            color: #666;
+            line-height: 1.5;
             font-size: 1.2rem;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.4);
-            margin-top: 2rem;
         }
         
-        .download-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 7px 20px rgba(74, 108, 247, 0.5);
+        .processing {
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            color: #4a6cf7;
         }
         
-        .download-btn:active {
-            transform: translateY(0);
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(74, 108, 247, 0.3);
+            border-radius: 50%;
+            border-top-color: #4a6cf7;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
         }
         
-        /* Progress bar styles */
-        .progress-container {
-            display: none;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-animation {
             width: 100%;
-            margin-top: 2rem;
-            border: 1px solid #eee;
-            padding: 15px;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-        }
-        
-        .progress-bar {
-            height: 20px; /* Taller for better visibility */
-            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
-            border-radius: 10px;
-            width: 0%;
-            transition: width 0.3s ease-out;
-            margin-bottom: 10px;
-            position: relative;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
             overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-top: 15px;
+            position: relative;
         }
         
-        .progress-bar::after {
+        .progress-animation::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
+            left: -50%;
+            width: 50%;
             height: 100%;
+            background: linear-gradient(to right, transparent, #4a6cf7, transparent);
+            animation: progressAnim 2s linear infinite;
+        }
+        
+        @keyframes progressAnim {
+            0% { left: -50%; }
+            100% { left: 100%; }
+        }
+        
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
             width: 100%;
-            background: linear-gradient(
-                90deg,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.3) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
-            animation: shimmer 2s infinite;
+            height: 2px;
+            background: #eee;
+            z-index: 1;
         }
         
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+        .step {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            background: white;
+            padding: 0 10px;
         }
         
-        .progress-text {
-            font-size: 1rem;
-            color: #444;
-            margin-bottom: 15px;
-            min-height: 2.5em;  /* Keep a consistent height for status text */
-            font-weight: 500;
+        .step .dot {
+            width: 30px;
+            height: 30px;
+            background: #eee;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 5px;
+            font-weight: bold;
+            color: #aaa;
+            transition: all 0.3s;
         }
         
-        .progress-details {
-            font-size: 0.85rem;
-            color: #666;
-            margin-top: 5px;
-            min-height: 1.5em;
+        .step.active .dot {
+            background: #4a6cf7;
+            color: white;
+            transform: scale(1.1);
         }
         
-        .debug-info {
-            font-size: 0.75rem;
-            color: #999;
-            margin-top: 10px;
-            text-align: left;
-            font-family: monospace;
-            background: #f0f0f0;
-            padding: 8px;
-            border-radius: 4px;
-            max-height: 100px;
-            overflow-y: auto;
-            display: none; /* Hidden by default, shown in debug mode */
+        .step p {
+            font-size: 0.8rem;
+            margin: 5px 0 0;
+            color: #888;
         }
         
-        /* Animation for loading indicator */
-        @keyframes pulse {
-            0% { opacity: 0.4; }
-            50% { opacity: 1; }
-            100% { opacity: 0.4; }
+        .step.active p {
+            color: #4a6cf7;
+            font-weight: bold;
         }
         
-        .loading-indicator {
-            display: inline-block;
+        /* Download Complete Notification */
+        .download-complete {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
             font-size: 1.2rem;
-            animation: pulse 1.5s infinite ease-in-out;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        .download-icon {
+            display: inline-block;
+            margin-right: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .back-button {
+            margin-top: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .back-button:hover {
+            background-color: #e0e0e0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="greeting">Hello</div>
-        <div class="username" id="username">Guest</div>
-        <button class="download-btn" id="downloadBtn">
-            <span>Download</span>
-        </button>
+        <h1>Hello</h1>
+        <div class="username">{{ username }}</div>
         
-        <!-- Progress bar elements -->
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-text">
-                <span id="progressText">Processing video...</span>
-                <span class="loading-indicator">⏳</span>
+        <p>We're creating a personalized video just for you!</p>
+        <p>Your download will start automatically in a few moments.</p>
+        
+        <div class="processing">
+            <div class="spinner"></div>
+            <div>Processing your video...</div>
+            
+            <div class="steps">
+                <div class="step step-1 active">
+                    <div class="dot">1</div>
+                    <p>Preparing</p>
+                </div>
+                <div class="step step-2">
+                    <div class="dot">2</div>
+                    <p>Creating</p>
+                </div>
+                <div class="step step-3">
+                    <div class="dot">3</div>
+                    <p>Finalizing</p>
+                </div>
             </div>
-            <div class="progress-details" id="progressDetails"></div>
-            <div class="progress-bar" id="progressBar"></div>
-            <div class="debug-info" id="debugInfo"></div>
+            
+            <div class="progress-animation"></div>
         </div>
+        
+        <a href="/" class="back-button" id="backButton" style="display: none;">Back to Home</a>
+    </div>
+    
+    <!-- Download Complete Notification -->
+    <div class="download-complete" id="downloadComplete">
+        <span class="download-icon">✓</span>
+        Your video has been downloaded!
     </div>
 
     <script>
-        // Function to get URL parameters
-        function getUrlParameter(name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            var results = regex.exec(location.search);
-            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-        }
-
-        // Get username from URL parameters
         document.addEventListener('DOMContentLoaded', function() {
-            const usernameParam = getUrlParameter('username');
-            if (usernameParam) {
-                document.getElementById('username').textContent = usernameParam;
-            }
+            // Get the steps
+            const steps = document.querySelectorAll('.step');
+            const stepDelay = 1000; // Time between steps in ms - reduced from 1500
+            const downloadNotification = document.getElementById('downloadComplete');
+            const backButton = document.getElementById('backButton');
             
-            // Set up download button click handler
-            document.getElementById('downloadBtn').addEventListener('click', function() {
-                handleDownload();
-            });
-        });
-
-        // Track if we're using real progress updates
-        let usingRealProgress = false;
-        
-        // Track process start time
-        let startTime;
-        
-        // Simulate progress animation
-        function simulateProgress() {
-            const progressBar = document.getElementById('progressBar');
-            let width = 0;
-            const maxWidth = 80; // Lower max width to avoid getting ahead of real progress
+            // Activate subsequent steps with delay
+            setTimeout(() => {
+                steps[1].classList.add('active');
+            }, stepDelay);
             
-            // Reset to 0
-            progressBar.style.width = '0%';
+            setTimeout(() => {
+                steps[2].classList.add('active');
+            }, stepDelay * 2);
             
-            // Gradually increase width, but more slowly
-            const interval = setInterval(() => {
-                // Stop the simulation if we've switched to real progress
-                if (usingRealProgress) {
-                    clearInterval(interval);
-                    return;
-                }
+            // Start automatic download after all steps are completed
+            // Reduced total wait time from stepDelay * 3 to stepDelay * 2.5
+            setTimeout(function() {
+                // Create a hidden iframe for download
+                const downloadFrame = document.createElement('iframe');
+                downloadFrame.style.display = 'none';
+                downloadFrame.src = "{% url 'home' %}?username={{ username }}&download=true";
+                document.body.appendChild(downloadFrame);
                 
-                if (width >= maxWidth) {
-                    clearInterval(interval);
-                    document.getElementById('progressText').textContent = 'Waiting for server...';
-                } else {
-                    // Even slower increment
-                    width += 0.2;
-                    progressBar.style.width = width + '%';
-                }
-            }, 150);
-            
-            return interval;
-        }
-        
-        // Function to handle the download process
-        function handleDownload() {
-            // Get the username
-            const username = document.getElementById('username').textContent;
-            
-            // Reset state for new download
-            usingRealProgress = false;
-            
-            // Record start time for estimating remaining time
-            startTime = Date.now();
-            
-            // Show progress container and reset its content
-            const progressContainer = document.getElementById('progressContainer');
-            progressContainer.style.display = 'block';
-            progressContainer.innerHTML = `
-                <div class="progress-text">
-                    <span id="progressText">Initializing...</span>
-                    <span class="loading-indicator">⏳</span>
-                </div>
-                <div class="progress-details" id="progressDetails"></div>
-                <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
-                <div class="debug-info" id="debugInfo"></div>
-            `;
-            
-            // Hide the download button temporarily
-            document.getElementById('downloadBtn').style.display = 'none';
-            
-            // Start progress animation
-            const progressInterval = simulateProgress();
-            
-            // First, call start_process to get a progress ID
-            fetch(`{% url 'start_process' %}?username=${encodeURIComponent(username)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to start processing');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const progressId = data.progress_id;
+                // Show download complete notification after a short delay
+                setTimeout(function() {
+                    downloadNotification.style.display = 'block';
+                    backButton.style.display = 'inline-block';
                     
-                    // Function to check progress
-                    function checkProgress() {
-                        fetch(`{% url 'get_progress' %}?id=${encodeURIComponent(progressId)}`)
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error('Failed to get progress');
-                                }
-                                return response.json();
-                            })
-                            .then(progressData => {
-                                // Set flag that we're using real progress
-                                usingRealProgress = true;
-                                
-                                // Clear the interval if it's still running
-                                if (progressInterval) {
-                                    clearInterval(progressInterval);
-                                }
-                                
-                                // Log progress data for debugging
-                                console.log('Progress data:', progressData);
-                                
-                                // Update progress bar with actual progress
-                                const progressValue = progressData.progress || 0;
-                                document.getElementById('progressBar').style.width = `${progressValue}%`;
-                                
-                                // Update debug info
-                                const debugInfo = document.getElementById('debugInfo');
-                                debugInfo.style.display = 'block'; // Show debug info
-                                const statusText = progressData.status || 'Processing...';
-                                debugInfo.textContent = `Progress: ${progressValue}%, Status: ${statusText}, Ready: ${progressData.ready || false}`;
-                                
-                                // Update progress text
-                                document.getElementById('progressText').textContent = statusText;
-                                
-                                // Display additional details if encoding
-                                const progressDetails = document.getElementById('progressDetails');
-                                if (statusText.includes('Encoding video')) {
-                                    // Extract estimated percentage from status
-                                    const match = statusText.match(/\((\d+)% estimated\)/);
-                                    if (match && match.length >= 2) {
-                                        const percentage = parseInt(match[1]);
-                                        
-                                        // Calculate estimated time remaining based on elapsed time and percentage
-                                        const elapsedTime = (Date.now() - startTime) / 1000; // in seconds
-                                        const estimatedTotalTime = percentage > 0 ? (elapsedTime * 100) / percentage : 0;
-                                        const estimatedRemaining = Math.max(0, estimatedTotalTime - elapsedTime);
-                                        
-                                        // Format the remaining time
-                                        let timeDisplay = '';
-                                        if (estimatedRemaining > 60) {
-                                            timeDisplay = `${Math.floor(estimatedRemaining / 60)}m ${Math.floor(estimatedRemaining % 60)}s`;
-                                        } else {
-                                            timeDisplay = `${Math.floor(estimatedRemaining)}s`;
-                                        }
-                                        
-                                        progressDetails.textContent = `Encoding in progress... Est. time remaining: ${timeDisplay}`;
-                                        progressDetails.style.display = 'block';
-                                    } else {
-                                        progressDetails.textContent = 'Encoding in progress...';
-                                        progressDetails.style.display = 'block';
-                                    }
-                                } else {
-                                    // For non-encoding statuses, show the status without estimated time
-                                    progressDetails.textContent = progressData.status || '';
-                                    progressDetails.style.display = 'block';
-                                }
-                                
-                                if (progressData.ready) {
-                                    // Show completion message
-                                    document.getElementById('progressBar').style.width = '100%';
-                                    document.getElementById('progressText').textContent = 'Processing complete! Preparing download...';
-                                    progressDetails.textContent = 'Your video is ready to download.';
-                                    progressDetails.style.display = 'block';
-                                    
-                                    // If processing is complete, download the file
-                                    if (progressInterval) {
-                                        clearInterval(progressInterval);
-                                    }
-                                    
-                                    // Create download URL with progress ID
-                                    const downloadUrl = `{% url 'download' %}?id=${encodeURIComponent(progressId)}`;
-                                    
-                                    // Download the file
-                                    fetch(downloadUrl)
-                                        .then(response => {
-                                            if (!response.ok) {
-                                                throw new Error('Network response was not ok');
-                                            }
-                                            
-                                            // Set progress to 100%
-                                            document.getElementById('progressBar').style.width = '100%';
-                                            document.getElementById('progressText').textContent = 'Download ready!';
-                                            
-                                            // Get the filename from Content-Disposition header if possible
-                                            let filename = `overlay_${username}.mp4`;
-                                            const disposition = response.headers.get('Content-Disposition');
-                                            if (disposition && disposition.includes('filename=')) {
-                                                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                                                const matches = filenameRegex.exec(disposition);
-                                                if (matches != null && matches[1]) {
-                                                    filename = matches[1].replace(/['"]/g, '');
-                                                }
-                                            }
-                                            
-                                            return response.blob().then(blob => {
-                                                return { blob, filename };
-                                            });
-
-                                            setTimeout(() => {
-                                                window.close(); // Close the tab
-                                            }, 1000);
-                                        })
-                                        .then(({ blob, filename }) => {
-                                            // Add another short delay before initiating download
-                                            // This allows users to see the 100% complete state
-                                            setTimeout(() => {
-                                                // Create a download link
-                                                const url = window.URL.createObjectURL(blob);
-                                                const a = document.createElement('a');
-                                                a.style.display = 'none';
-                                                a.href = url;
-                                                a.download = filename;
-                                                document.body.appendChild(a);
-                                                
-                                                // Trigger download
-                                                a.click();
-                                                
-                                                // Clean up
-                                                window.URL.revokeObjectURL(url);
-                                                document.body.removeChild(a);
-                                                
-                                                // Show download complete message
-                                                document.getElementById('progressText').textContent = 'Download complete!';
-                                                
-                                                // Show the download button again
-                                                setTimeout(() => {
-                                                    document.getElementById('downloadBtn').style.display = 'inline-block';
-                                                    
-                                                    // Reset progress container to original state
-                                                    progressContainer.style.display = 'none';
-                                                    
-                                                    // Restore progress container to original state for next download
-                                                    progressContainer.innerHTML = `
-                                                        <div class="progress-text">
-                                                            <span id="progressText">Processing video...</span>
-                                                            <span class="loading-indicator">⏳</span>
-                                                        </div>
-                                                        <div class="progress-details" id="progressDetails"></div>
-                                                        <div class="progress-bar" id="progressBar"></div>
-                                                        <div class="debug-info" id="debugInfo"></div>
-                                                    `;
-                                                }, 500);
-                                            }, 1000);
-                                        });
-                                }
-                            });
-                    }
-                    
-                    // Check progress initially
-                    checkProgress();
-                });
-        }
+                    // Hide notification after 5 seconds
+                    setTimeout(function() {
+                        downloadNotification.style.display = 'none';
+                    }, 5000);
+                }, 3000); // Assuming download starts within 3 seconds
+            }, stepDelay * 2.5);
+        });
     </script>
 </body>
-</html>
+</html> 

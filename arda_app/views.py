@@ -23,14 +23,7 @@ import proglog
 # Global progress tracking dictionary
 PROGRESS_DATA = {}
 
-# Create your views here.
 def home(request):
-    return render(request, 'index.html')
-
-def direct_page(request):
-    return render(request, 'direct.html')
-
-def direct_overlay(request):
     """
     Directly overlay the frame.png with username on video and return for download
     """
@@ -39,7 +32,7 @@ def direct_overlay(request):
     
     # If no download parameter is specified, show the loading UI with the username
     if not download:
-        return render(request, 'direct_overlay.html', {'username': username})
+        return render(request, 'index.html', {'username': username})
     
     try:
         # Get paths to static files
