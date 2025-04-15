@@ -3,9 +3,8 @@ from . import views
 
 
 urlpatterns = [
-    path('', views.home, name='home'),
-    path('download/', views.download, name='download'),
-    path('start_process/', views.start_process, name='start_process'),
-    path('get_progress/', views.get_progress, name='get_progress'),
+    # path('', views.home, name='home'),
+    path('direct_overlay/', views.direct_overlay, name='direct_overlay'),
+    path('', views.direct_page, name='direct_page'),
     path('apis/v1', include('apis.urls')),
 ]

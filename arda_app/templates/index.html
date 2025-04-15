@@ -82,21 +82,72 @@
             display: none;
             width: 100%;
             margin-top: 2rem;
+            border: 1px solid #eee;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
         }
         
         .progress-bar {
-            height: 10px;
+            height: 20px; /* Taller for better visibility */
             background: linear-gradient(to right, #4a6cf7, #9a3ef8);
-            border-radius: 5px;
+            border-radius: 10px;
             width: 0%;
-            transition: width 0.5s ease;
+            transition: width 0.3s ease-out;
             margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.3) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
         
         .progress-text {
             font-size: 1rem;
-            color: #666;
+            color: #444;
             margin-bottom: 15px;
+            min-height: 2.5em;  /* Keep a consistent height for status text */
+            font-weight: 500;
+        }
+        
+        .progress-details {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+            min-height: 1.5em;
+        }
+        
+        .debug-info {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 10px;
+            text-align: left;
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 8px;
+            border-radius: 4px;
+            max-height: 100px;
+            overflow-y: auto;
+            display: none; /* Hidden by default, shown in debug mode */
         }
         
         /* Animation for loading indicator */
@@ -127,7 +178,9 @@
                 <span id="progressText">Processing video...</span>
                 <span class="loading-indicator">⏳</span>
             </div>
+            <div class="progress-details" id="progressDetails"></div>
             <div class="progress-bar" id="progressBar"></div>
+            <div class="debug-info" id="debugInfo"></div>
         </div>
     </div>
 
@@ -155,6 +208,9 @@
 
         // Track if we're using real progress updates
         let usingRealProgress = false;
+        
+        // Track process start time
+        let startTime;
         
         // Simulate progress animation
         function simulateProgress() {
@@ -194,15 +250,20 @@
             // Reset state for new download
             usingRealProgress = false;
             
+            // Record start time for estimating remaining time
+            startTime = Date.now();
+            
             // Show progress container and reset its content
             const progressContainer = document.getElementById('progressContainer');
             progressContainer.style.display = 'block';
             progressContainer.innerHTML = `
                 <div class="progress-text">
-                    <span id="progressText">Processing video...</span>
+                    <span id="progressText">Initializing...</span>
                     <span class="loading-indicator">⏳</span>
                 </div>
+                <div class="progress-details" id="progressDetails"></div>
                 <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+                <div class="debug-info" id="debugInfo"></div>
             `;
             
             // Hide the download button temporarily
@@ -240,11 +301,62 @@
                                     clearInterval(progressInterval);
                                 }
                                 
+                                // Log progress data for debugging
+                                console.log('Progress data:', progressData);
+                                
                                 // Update progress bar with actual progress
-                                document.getElementById('progressBar').style.width = `${progressData.progress}%`;
-                                document.getElementById('progressText').textContent = progressData.status;
+                                const progressValue = progressData.progress || 0;
+                                document.getElementById('progressBar').style.width = `${progressValue}%`;
+                                
+                                // Update debug info
+                                const debugInfo = document.getElementById('debugInfo');
+                                debugInfo.style.display = 'block'; // Show debug info
+                                const statusText = progressData.status || 'Processing...';
+                                debugInfo.textContent = `Progress: ${progressValue}%, Status: ${statusText}, Ready: ${progressData.ready || false}`;
+                                
+                                // Update progress text
+                                document.getElementById('progressText').textContent = statusText;
+                                
+                                // Display additional details if encoding
+                                const progressDetails = document.getElementById('progressDetails');
+                                if (statusText.includes('Encoding video')) {
+                                    // Extract estimated percentage from status
+                                    const match = statusText.match(/\((\d+)% estimated\)/);
+                                    if (match && match.length >= 2) {
+                                        const percentage = parseInt(match[1]);
+                                        
+                                        // Calculate estimated time remaining based on elapsed time and percentage
+                                        const elapsedTime = (Date.now() - startTime) / 1000; // in seconds
+                                        const estimatedTotalTime = percentage > 0 ? (elapsedTime * 100) / percentage : 0;
+                                        const estimatedRemaining = Math.max(0, estimatedTotalTime - elapsedTime);
+                                        
+                                        // Format the remaining time
+                                        let timeDisplay = '';
+                                        if (estimatedRemaining > 60) {
+                                            timeDisplay = `${Math.floor(estimatedRemaining / 60)}m ${Math.floor(estimatedRemaining % 60)}s`;
+                                        } else {
+                                            timeDisplay = `${Math.floor(estimatedRemaining)}s`;
+                                        }
+                                        
+                                        progressDetails.textContent = `Encoding in progress... Est. time remaining: ${timeDisplay}`;
+                                        progressDetails.style.display = 'block';
+                                    } else {
+                                        progressDetails.textContent = 'Encoding in progress...';
+                                        progressDetails.style.display = 'block';
+                                    }
+                                } else {
+                                    // For non-encoding statuses, show the status without estimated time
+                                    progressDetails.textContent = progressData.status || '';
+                                    progressDetails.style.display = 'block';
+                                }
                                 
                                 if (progressData.ready) {
+                                    // Show completion message
+                                    document.getElementById('progressBar').style.width = '100%';
+                                    document.getElementById('progressText').textContent = 'Processing complete! Preparing download...';
+                                    progressDetails.textContent = 'Your video is ready to download.';
+                                    progressDetails.style.display = 'block';
+                                    
                                     // If processing is complete, download the file
                                     if (progressInterval) {
                                         clearInterval(progressInterval);
@@ -318,59 +430,19 @@
                                                             <span id="progressText">Processing video...</span>
                                                             <span class="loading-indicator">⏳</span>
                                                         </div>
+                                                        <div class="progress-details" id="progressDetails"></div>
                                                         <div class="progress-bar" id="progressBar"></div>
+                                                        <div class="debug-info" id="debugInfo"></div>
                                                     `;
-                                                }, 2000);
-                                            }, 1000); // 1 second delay before download starts
-                                        })
-                                        .catch(error => {
-                                            console.error('Download failed:', error);
-                                            document.getElementById('progressText').textContent = 'Error processing video. Please try again.';
-                                            document.getElementById('progressBar').style.width = '0%';
-                                            
-                                            // Show the download button again
-                                            setTimeout(() => {
-                                                document.getElementById('downloadBtn').style.display = 'inline-block';
-                                            }, 2000);
+                                                }, 500);
+                                            }, 1000);
                                         });
-                                } else {
-                                    // If not ready, check again after 1 second
-                                    setTimeout(checkProgress, 1000);
                                 }
-                            })
-                            .catch(error => {
-                                console.error('Error checking progress:', error);
-                                // Clear interval if it exists
-                                if (typeof progressInterval !== 'undefined' && progressInterval) {
-                                    clearInterval(progressInterval);
-                                }
-                                document.getElementById('progressText').textContent = 'Error checking progress. Please try again.';
-                                
-                                // Show the download button again
-                                setTimeout(() => {
-                                    document.getElementById('downloadBtn').style.display = 'inline-block';
-                                    progressContainer.style.display = 'none';
-                                }, 2000);
                             });
                     }
                     
-                    // Start checking progress
+                    // Check progress initially
                     checkProgress();
-                })
-                .catch(error => {
-                    console.error('Failed to start processing:', error);
-                    // Clear interval if it exists
-                    if (typeof progressInterval !== 'undefined' && progressInterval) {
-                        clearInterval(progressInterval);
-                    }
-                    document.getElementById('progressText').textContent = 'Error starting process. Please try again.';
-                    document.getElementById('progressBar').style.width = '0%';
-                    
-                    // Show the download button again
-                    setTimeout(() => {
-                        document.getElementById('downloadBtn').style.display = 'inline-block';
-                        progressContainer.style.display = 'none';
-                    }, 2000);
                 });
         }
     </script>

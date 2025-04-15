@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Video Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #333;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            animation: fadeIn 1s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #444;
+        }
+        
+        p {
+            margin-bottom: 1.5rem;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        input {
+            padding: 12px 15px;
+            font-size: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            border-color: #4a6cf7;
+            outline: none;
+        }
+        
+        .overlay-btn {
+            background: linear-gradient(to right, #4a6cf7, #9a3ef8);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.4);
+        }
+        
+        .overlay-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(74, 108, 247, 0.5);
+        }
+        
+        .overlay-btn:active {
+            transform: translateY(0);
+        }
+        
+        .processing {
+            display: none;
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            color: #4a6cf7;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(74, 108, 247, 0.3);
+            border-radius: 50%;
+            border-top-color: #4a6cf7;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-animation {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+            position: relative;
+        }
+        
+        .progress-animation::after {
+            content: '';
+            position: absolute;
+            left: -50%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, #4a6cf7, transparent);
+            animation: progressAnim 2s linear infinite;
+        }
+        
+        @keyframes progressAnim {
+            0% { left: -50%; }
+            100% { left: 100%; }
+        }
+        
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #eee;
+            z-index: 1;
+        }
+        
+        .step {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            background: white;
+            padding: 0 10px;
+        }
+        
+        .step .dot {
+            width: 30px;
+            height: 30px;
+            background: #eee;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 5px;
+            font-weight: bold;
+            color: #aaa;
+            transition: all 0.3s;
+        }
+        
+        .step.active .dot {
+            background: #4a6cf7;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .step p {
+            font-size: 0.8rem;
+            margin: 5px 0 0;
+            color: #888;
+        }
+        
+        .step.active p {
+            color: #4a6cf7;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Direct Video Overlay</h1>
+        <p>Enter your name below and we'll overlay it on our video. The download will start automatically.</p>
+        
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Enter your name" value="">
+        </div>
+        
+        <button class="overlay-btn" id="overlayBtn">Create & Download Video</button>
+        
+        <div class="processing" id="processing">
+            <span class="spinner"></span>
+            <span>Processing your video. Download will start automatically...</span>
+            
+            <div class="steps">
+                <div class="step step-1 active">
+                    <div class="dot">1</div>
+                    <p>Preparing</p>
+                </div>
+                <div class="step step-2">
+                    <div class="dot">2</div>
+                    <p>Creating</p>
+                </div>
+                <div class="step step-3">
+                    <div class="dot">3</div>
+                    <p>Finalizing</p>
+                </div>
+            </div>
+            
+            <div class="progress-animation"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const overlayBtn = document.getElementById('overlayBtn');
+            const processingMsg = document.getElementById('processing');
+            const usernameInput = document.getElementById('username');
+            
+            overlayBtn.addEventListener('click', function() {
+                // Get username
+                const username = usernameInput.value.trim() || 'Guest';
+                
+                // Show processing message
+                processingMsg.style.display = 'block';
+                overlayBtn.disabled = true;
+                overlayBtn.style.opacity = '0.7';
+                
+                // Animated steps
+                const steps = document.querySelectorAll('.step');
+                const stepDelay = 5000 / 3; // Total process time divided by 3 steps
+                
+                // Activate first step immediately
+                steps[0].classList.add('active');
+                
+                // Activate subsequent steps with delay
+                setTimeout(() => {
+                    steps[1].classList.add('active');
+                }, stepDelay);
+                
+                setTimeout(() => {
+                    steps[2].classList.add('active');
+                }, stepDelay * 2);
+                
+                // Create the URL for direct download
+                const downloadUrl = `{% url 'direct_overlay' %}?username=${encodeURIComponent(username)}`;
+                
+                // Create an iframe to trigger the download without navigating away
+                const downloadFrame = document.createElement('iframe');
+                downloadFrame.style.display = 'none';
+                downloadFrame.src = downloadUrl;
+                document.body.appendChild(downloadFrame);
+                
+                // Reset UI after a delay
+                setTimeout(function() {
+                    processingMsg.style.display = 'none';
+                    overlayBtn.disabled = false;
+                    overlayBtn.style.opacity = '1';
+                    document.body.removeChild(downloadFrame);
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+</html> 
