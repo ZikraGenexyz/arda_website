@@ -37,7 +37,7 @@ def home(request):
     try:
         # Get paths to static files
         base_dir = Path(__file__).resolve().parent
-        static_dir = os.path.join(base_dir, 'static')
+        static_dir = os.path.join(base_dir, '../arda_website/staticfiles')
         
         # Source paths - these should be pre-existing static files included in your deployment
         video_path = os.path.join(static_dir, 'video', 'liolio.mp4')
