@@ -365,8 +365,16 @@
             
             function showDownloadError(errorMessage) {
                 downloadNotification.style.display = 'block';
-                downloadNotification.innerHTML = '<span style="margin-right: 10px;">⚠️</span>Download failed. Please try again.' + 
-                    (errorMessage ? `<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">${errorMessage}</div>` : '');
+                
+                // Customize error message if it matches the file not found pattern
+                if (errorMessage && (errorMessage.includes("Video file not found") || errorMessage.includes("Frame image not found"))) {
+                    downloadNotification.innerHTML = '<span style="margin-right: 10px;">⚠️</span>Server configuration error: Media files not found' + 
+                        '<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">Please contact the administrator</div>';
+                } else {
+                    downloadNotification.innerHTML = '<span style="margin-right: 10px;">⚠️</span>Download failed. Please try again.' + 
+                        (errorMessage ? `<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">${errorMessage}</div>` : '');
+                }
+                
                 downloadNotification.style.backgroundColor = '#f44336';
                 backButton.style.display = 'inline-block';
                 

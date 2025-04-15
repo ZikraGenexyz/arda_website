@@ -35,13 +35,43 @@ def home(request):
         return render(request, 'index.html', {'username': username})
     
     try:
-        # Get paths to static files
+        # Check multiple possible static file locations
+        # Get paths to static files - check multiple possible locations
         base_dir = Path(__file__).resolve().parent
-        static_dir = os.path.join(base_dir, '../arda_website/staticfiles')
         
-        # Source paths - these should be pre-existing static files included in your deployment
-        video_path = os.path.join(static_dir, 'video', 'liolio.mp4')
-        frame_path = os.path.join(static_dir, 'image', 'frame.png')
+        # List of possible static directories
+        static_dirs = [
+            os.path.join(base_dir, 'static'),                           # App static dir
+            os.path.join(base_dir, '../static'),                        # Project static dir
+            os.path.join(base_dir, '../staticfiles'),                   # Collected static dir
+            os.path.join(base_dir, '../arda_website/staticfiles'),      # Django project staticfiles
+            '/var/task/arda_app/static',                                # Vercel path
+            '/var/task/static',                                         # Vercel alternative path
+            '/tmp/static'                                               # Temp dir as fallback
+        ]
+        
+        # Try to find video and frame in various locations
+        video_path = None
+        frame_path = None
+        
+        for static_dir in static_dirs:
+            print(f"Checking static dir: {static_dir}")
+            
+            # Check for video file
+            potential_video_path = os.path.join(static_dir, 'video', 'liolio.mp4')
+            if os.path.exists(potential_video_path):
+                video_path = potential_video_path
+                print(f"Found video at: {video_path}")
+            
+            # Check for frame file
+            potential_frame_path = os.path.join(static_dir, 'image', 'frame.png')
+            if os.path.exists(potential_frame_path):
+                frame_path = potential_frame_path
+                print(f"Found frame at: {frame_path}")
+            
+            # If both found, break
+            if video_path and frame_path:
+                break
         
         # Create temporary directory for all output files
         temp_dir = tempfile.mkdtemp()
@@ -49,17 +79,25 @@ def home(request):
         output_video_path = os.path.join(temp_dir, f"output_{username}.mp4")
         
         print(f"Processing direct overlay for {username}")
-        print(f"Video path: {video_path}")
-        print(f"Frame path: {frame_path}")
         print(f"Temp dir: {temp_dir}")
         print(f"Output path: {output_video_path}")
         
         # Check if files exist before processing
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"Video file not found: {video_path}")
+        if not video_path:
+            # List directories to help debug
+            debug_info = "\nChecked directories:\n"
+            for static_dir in static_dirs:
+                debug_info += f"- {static_dir}/video/liolio.mp4 exists: {os.path.exists(os.path.join(static_dir, 'video', 'liolio.mp4'))}\n"
+            
+            raise FileNotFoundError(f"Video file not found in any of the checked locations.{debug_info}")
         
-        if not os.path.exists(frame_path):
-            raise FileNotFoundError(f"Frame image not found: {frame_path}")
+        if not frame_path:
+            # List directories to help debug
+            debug_info = "\nChecked directories:\n"
+            for static_dir in static_dirs:
+                debug_info += f"- {static_dir}/image/frame.png exists: {os.path.exists(os.path.join(static_dir, 'image', 'frame.png'))}\n"
+            
+            raise FileNotFoundError(f"Frame image not found in any of the checked locations.{debug_info}")
         
         # Open video and get properties - do not close until after composite creation
         original_video = VideoFileClip(video_path)
@@ -83,17 +121,22 @@ def home(request):
         
         # Find a usable font
         try:
-            system_fonts = [
-                os.path.join(static_dir, 'fonts', 'DejaVuSans.ttf'),  # Our custom font
-                os.path.join(static_dir, 'fonts', 'Arial.ttf'),  # Our custom font
+            # Check multiple static directories for fonts
+            font_paths = []
+            for static_dir in static_dirs:
+                font_paths.append(os.path.join(static_dir, 'fonts', 'DejaVuSans.ttf'))
+                font_paths.append(os.path.join(static_dir, 'fonts', 'Arial.ttf'))
+            
+            # Add system font paths
+            font_paths.extend([
                 "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
                 "C:/Windows/Fonts/Arial.ttf",  # Windows
                 "/var/task/arda_app/static/fonts/DejaVuSans.ttf"  # Vercel path
-            ]
+            ])
             
             font = None
-            for font_path in system_fonts:
+            for font_path in font_paths:
                 if os.path.exists(font_path):
                     # Adjust font size proportionally to the video resize
                     font_size = int(40 * 0.5)  # 50% of original font size
