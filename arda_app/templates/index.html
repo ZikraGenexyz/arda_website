@@ -186,6 +186,9 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             z-index: 1000;
             animation: slideUp 0.5s ease-out;
+            font-weight: bold;
+            min-width: 280px;
+            text-align: center;
         }
         
         @keyframes slideUp {
@@ -251,9 +254,8 @@
         <a href="/" class="back-button" id="backButton" style="display: none;">Back to Home</a>
     </div>
     
-    <!-- Download Complete Notification -->
+    <!-- Download Notification -->
     <div class="download-complete" id="downloadComplete">
-        <span class="download-icon">✓</span>
         Your video has been downloaded!
     </div>
 
@@ -261,7 +263,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Get the steps
             const steps = document.querySelectorAll('.step');
-            const stepDelay = 1000; // Time between steps in ms - reduced from 1500
+            const stepDelay = 1000; // Time between steps in ms
             const downloadNotification = document.getElementById('downloadComplete');
             const backButton = document.getElementById('backButton');
             
@@ -274,26 +276,91 @@
                 steps[2].classList.add('active');
             }, stepDelay * 2);
             
-            // Start automatic download after all steps are completed
-            // Reduced total wait time from stepDelay * 3 to stepDelay * 2.5
+            // Start download after steps are completed
             setTimeout(function() {
-                // Create a hidden iframe for download
-                const downloadFrame = document.createElement('iframe');
-                downloadFrame.style.display = 'none';
-                downloadFrame.src = "{% url 'home' %}?username={{ username }}&download=true";
-                document.body.appendChild(downloadFrame);
+                // Instead of iframe, use fetch to get a head start on the request
+                // This will allow us to know exactly when the server responds
+                // and the download is ready
                 
-                // Show download complete notification after a short delay
-                setTimeout(function() {
-                    downloadNotification.style.display = 'block';
-                    backButton.style.display = 'inline-block';
-                    
-                    // Hide notification after 5 seconds
-                    setTimeout(function() {
-                        downloadNotification.style.display = 'none';
-                    }, 5000);
-                }, 3000); // Assuming download starts within 3 seconds
+                const downloadUrl = "{% url 'home' %}?username={{ username }}&download=true";
+                
+                // Show that we're processing
+                showProcessingVideo();
+                
+                // Use fetch with blob response type to properly handle the video download
+                fetch(downloadUrl)
+                    .then(response => {
+                        // Only proceed if we got a successful response
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        
+                        // Check if it's a video response
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('video/mp4')) {
+                            throw new Error('Not a video response');
+                        }
+                        
+                        // At this point we know we have a valid video response
+                        // Show the download is starting notification
+                        showDownloadSuccess();
+                        
+                        // Return the blob data to be processed
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        // Create a downloadable link for the blob
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `overlay_{{ username }}.mp4`;
+                        document.body.appendChild(a);
+                        
+                        // Trigger the download
+                        a.click();
+                        
+                        // Clean up
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                    })
+                    .catch(error => {
+                        console.error('Download error:', error);
+                        showDownloadError();
+                    });
             }, stepDelay * 2.5);
+            
+            function showProcessingVideo() {
+                // Update processing message to be more specific
+                const processingDiv = document.querySelector('.processing div:nth-child(2)');
+                if (processingDiv) {
+                    processingDiv.textContent = 'Generating your personalized video...';
+                }
+            }
+            
+            function showDownloadSuccess() {
+                downloadNotification.style.display = 'block';
+                downloadNotification.innerHTML = '<span style="margin-right: 10px;">⬇️</span>Your download is starting...<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">Check your downloads folder</div>';
+                downloadNotification.style.backgroundColor = '#4a6cf7';
+                backButton.style.display = 'inline-block';
+                backButton.textContent = 'Create Another Video';
+                
+                // Hide notification after 8 seconds
+                setTimeout(function() {
+                    downloadNotification.style.display = 'none';
+                }, 8000);
+            }
+            
+            function showDownloadError() {
+                downloadNotification.style.display = 'block';
+                downloadNotification.innerHTML = '<span style="margin-right: 10px;">⚠️</span>Download failed. Please try again.';
+                downloadNotification.style.backgroundColor = '#f44336';
+                backButton.style.display = 'inline-block';
+                
+                // Change back button text
+                backButton.textContent = 'Try Again';
+                backButton.href = window.location.href;
+            }
         });
     </script>
 </body>
