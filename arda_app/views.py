@@ -38,19 +38,12 @@ def home(request):
         # Get paths to static files
         base_dir = Path(__file__).resolve().parent
         static_dir = os.path.join(base_dir, 'static')
-        video_dir = os.path.join(static_dir, 'video')
-        image_dir = os.path.join(static_dir, 'image')
         
-        # Ensure directories exist
-        os.makedirs(static_dir, exist_ok=True)
-        os.makedirs(video_dir, exist_ok=True)
-        os.makedirs(image_dir, exist_ok=True)
+        # Source paths - these should be pre-existing static files included in your deployment
+        video_path = os.path.join(static_dir, 'video', 'liolio.mp4')
+        frame_path = os.path.join(static_dir, 'image', 'frame.png')
         
-        # Source paths
-        video_path = os.path.join(video_dir, 'liolio.mp4')
-        frame_path = os.path.join(image_dir, 'frame.png')
-        
-        # Temporary output paths
+        # Create temporary directory for all output files
         temp_dir = tempfile.mkdtemp()
         named_frame_path = os.path.join(temp_dir, f"frame_{username}.png")
         output_video_path = os.path.join(temp_dir, f"output_{username}.mp4")
@@ -58,6 +51,7 @@ def home(request):
         print(f"Processing direct overlay for {username}")
         print(f"Video path: {video_path}")
         print(f"Frame path: {frame_path}")
+        print(f"Temp dir: {temp_dir}")
         print(f"Output path: {output_video_path}")
         
         # Check if files exist before processing
@@ -90,20 +84,28 @@ def home(request):
         # Find a usable font
         try:
             system_fonts = [
+                os.path.join(static_dir, 'fonts', 'DejaVuSans.ttf'),  # Our custom font
+                os.path.join(static_dir, 'fonts', 'Arial.ttf'),  # Our custom font
                 "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
-                "C:/Windows/Fonts/Arial.ttf"  # Windows
+                "C:/Windows/Fonts/Arial.ttf",  # Windows
+                "/var/task/arda_app/static/fonts/DejaVuSans.ttf"  # Vercel path
             ]
             
+            font = None
             for font_path in system_fonts:
                 if os.path.exists(font_path):
                     # Adjust font size proportionally to the video resize
                     font_size = int(40 * 0.5)  # 50% of original font size
                     font = ImageFont.truetype(font_path, font_size)
+                    print(f"Using font: {font_path}")
                     break
-            else:
+            
+            if font is None:
+                print("Using default font as no system fonts were found")
                 font = ImageFont.load_default()
-        except:
+        except Exception as e:
+            print(f"Font error: {str(e)}")
             font = ImageFont.load_default()
         
         # Center text in bottom half of the image
@@ -111,7 +113,8 @@ def home(request):
             bbox = font.getbbox(username)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
-        except:
+        except Exception as e:
+            print(f"Text sizing error: {str(e)}")
             text_width = len(username) * 10  # Adjusted for smaller font
             text_height = 15  # Adjusted for smaller font
         
@@ -131,15 +134,20 @@ def home(request):
         final = CompositeVideoClip(clips)
         
         # Use lower bitrate and resolution for faster processing
-        final.write_videofile(
-            output_video_path, 
-            codec="libx264", 
-            audio_codec="aac",
-            bitrate="1000k",  # Lower bitrate
-            logger=None, 
-            verbose=False, 
-            fps=fps
-        )
+        try:
+            final.write_videofile(
+                output_video_path, 
+                codec="libx264", 
+                audio_codec="aac",
+                bitrate="1000k",  # Lower bitrate
+                logger=None, 
+                verbose=False, 
+                fps=fps
+            )
+            print(f"Video created successfully at {output_video_path}")
+        except Exception as e:
+            print(f"Video creation error: {str(e)}")
+            raise
         
         # Clean up - Only close the clips after writing the video file
         overlay.close()
@@ -148,28 +156,40 @@ def home(request):
         final.close()
         
         # Serve file directly for download
-        response = FileResponse(open(output_video_path, 'rb'))
-        response['Content-Type'] = 'video/mp4'
-        response['Content-Disposition'] = f'attachment; filename="overlay_{username}.mp4"'
-        
-        # Schedule cleanup of temporary files
-        def delayed_cleanup():
-            time.sleep(60)  # Wait before cleaning up
-            try:
-                if os.path.exists(named_frame_path):
-                    os.remove(named_frame_path)
-                if os.path.exists(output_video_path):
-                    os.remove(output_video_path)
-                if os.path.exists(temp_dir):
-                    os.rmdir(temp_dir)
-            except Exception as e:
-                print(f"Cleanup error: {str(e)}")
-        
-        cleanup_thread = threading.Thread(target=delayed_cleanup)
-        cleanup_thread.daemon = True
-        cleanup_thread.start()
-        
-        return response
+        try:
+            with open(output_video_path, 'rb') as f:
+                response = FileResponse(f)
+                response['Content-Type'] = 'video/mp4'
+                response['Content-Disposition'] = f'attachment; filename="overlay_{username}.mp4"'
+                # Add cache control headers to prevent caching
+                response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response['Pragma'] = 'no-cache'
+                response['Expires'] = '0'
+                
+                print(f"Serving download for {username}, file size: {os.path.getsize(output_video_path)} bytes")
+                
+                # Schedule cleanup of temporary files
+                def delayed_cleanup():
+                    time.sleep(60)  # Wait before cleaning up
+                    try:
+                        if os.path.exists(named_frame_path):
+                            os.remove(named_frame_path)
+                        if os.path.exists(output_video_path):
+                            os.remove(output_video_path)
+                        if os.path.exists(temp_dir):
+                            os.rmdir(temp_dir)
+                        print(f"Cleanup completed for {username}")
+                    except Exception as e:
+                        print(f"Cleanup error: {str(e)}")
+                
+                cleanup_thread = threading.Thread(target=delayed_cleanup)
+                cleanup_thread.daemon = True
+                cleanup_thread.start()
+                
+                return response
+        except Exception as e:
+            print(f"File response error: {str(e)}")
+            raise
         
     except Exception as e:
         error_msg = f"Error in direct_overlay: {str(e)}"

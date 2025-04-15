@@ -290,15 +290,22 @@
                 // Use fetch with blob response type to properly handle the video download
                 fetch(downloadUrl)
                     .then(response => {
+                        // Check if we got a JSON error response
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            return response.json().then(data => {
+                                throw new Error(data.error || 'Server returned an error');
+                            });
+                        }
+                        
                         // Only proceed if we got a successful response
                         if (!response.ok) {
                             throw new Error(`HTTP error! Status: ${response.status}`);
                         }
                         
                         // Check if it's a video response
-                        const contentType = response.headers.get('content-type');
                         if (!contentType || !contentType.includes('video/mp4')) {
-                            throw new Error('Not a video response');
+                            throw new Error('Server did not return a video file');
                         }
                         
                         // At this point we know we have a valid video response
@@ -309,6 +316,11 @@
                         return response.blob();
                     })
                     .then(blob => {
+                        // Make sure we got a blob with content
+                        if (!blob || blob.size === 0) {
+                            throw new Error('Empty video file received');
+                        }
+                        
                         // Create a downloadable link for the blob
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -326,7 +338,7 @@
                     })
                     .catch(error => {
                         console.error('Download error:', error);
-                        showDownloadError();
+                        showDownloadError(error.message);
                     });
             }, stepDelay * 2.5);
             
@@ -351,9 +363,10 @@
                 }, 8000);
             }
             
-            function showDownloadError() {
+            function showDownloadError(errorMessage) {
                 downloadNotification.style.display = 'block';
-                downloadNotification.innerHTML = '<span style="margin-right: 10px;">⚠️</span>Download failed. Please try again.';
+                downloadNotification.innerHTML = '<span style="margin-right: 10px;">⚠️</span>Download failed. Please try again.' + 
+                    (errorMessage ? `<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">${errorMessage}</div>` : '');
                 downloadNotification.style.backgroundColor = '#f44336';
                 backButton.style.display = 'inline-block';
                 
