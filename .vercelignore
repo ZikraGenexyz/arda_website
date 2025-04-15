@@ -1,62 +1,12 @@
-# Environments
-venv/
-env/
-.env
-.venv
-ENV/
-
-# Git and version control
-.git
-.gitignore
-
-# Python cache files
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.pytest_cache/
-
-# Distribution / packaging
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# macOS specific
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Tests and documentation
-tests/
-docs/
-
-# Additional files
 *.pyc
+__pycache__/
 *.pyo
 *.pyd
+.Python
+env/
+venv/
+.env
+.venv
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -67,18 +17,12 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
+.pytest_cache/
 .DS_Store
+db.sqlite3
 media/
 static/
+.git
+.gitignore
 README.md
-
-# Ignore everything by default
-*
-
-# But allow these files
-!build-static.sh
-!vercel.json
-!index.html
-
-# Allow the static output directory to be included
-!staticfiles/
+tests/
