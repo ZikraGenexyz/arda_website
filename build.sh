@@ -3,7 +3,7 @@
 set -o errexit
 
 # Install production requirements for deployment
-pip3 install -r requirements-prod.txt
+pip3 install -r requirements.txt
 
 python3 manage.py collectstatic --noinput
 
