@@ -10,15 +10,15 @@ from pathlib import Path
 # Import Pillow for image manipulation
 from PIL import Image, ImageDraw, ImageFont
 
-# Import OpenCV
-import cv2
+# Import MoviePy for video processing
+from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip, ColorClip, TextClip
+
+# Global progress tracking dictionary
+PROGRESS_DATA = {}
 
 # Create your views here.
 def home(request):
     return render(request, 'index.html')
-
-# Global progress tracking dictionary
-PROGRESS_DATA = {}
 
 def create_named_overlay(png_path, user_name, target_size):
     """Add name to PNG and resize it to match video size."""
@@ -88,75 +88,113 @@ def overlay_image(frame, overlay):
     blended = alpha * overlay_rgb + (1 - alpha) * frame
     return blended.astype(np.uint8)
 
-def process_video_with_cv2(input_video, output_video, overlay_image_np, progress_id, target_width=None, target_height=None):
-    """Process video with OpenCV, reporting progress."""
+def process_video_with_moviepy(input_video, output_video, overlay_path, username, progress_id, target_width=None, target_height=None):
+    """Process video with MoviePy, reporting progress."""
     try:
-        cap = cv2.VideoCapture(input_video)
-        if not cap.isOpened():
+        if not os.path.exists(input_video):
             PROGRESS_DATA[progress_id]['error'] = "Could not open video file"
             PROGRESS_DATA[progress_id]['status'] = "Error: Could not open video file"
             return False
             
+        # Initialize progress
+        PROGRESS_DATA[progress_id]['progress'] = 10
+        PROGRESS_DATA[progress_id]['status'] = "Loading video file..."
+        
+        # Load the video file
+        video = VideoFileClip(input_video)
+        
         # Get original dimensions
-        orig_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        orig_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        orig_width, orig_height = video.size
         
         # Use provided dimensions or original if not provided
         width = target_width if target_width is not None else orig_width
         height = target_height if target_height is not None else orig_height
         
-        # Log resize info
-        if target_width is not None and target_height is not None:
-            print(f"Resizing video from {orig_width}x{orig_height} to {width}x{height}")
+        # Update progress
+        PROGRESS_DATA[progress_id]['progress'] = 30
+        PROGRESS_DATA[progress_id]['status'] = "Preparing overlay..."
+        
+        # Resize video if needed
+        if width != orig_width or height != orig_height:
             PROGRESS_DATA[progress_id]['status'] = f"Resizing video to {width}x{height}..."
+            video = video.resize(newsize=(width, height))
         
-        # Create video writer
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec
-        out = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
+        # Create a named overlay from the PNG
+        # First add the username to the overlay
+        img = Image.open(overlay_path).convert("RGBA")
+        draw = ImageDraw.Draw(img)
         
-        if not out.isOpened():
-            PROGRESS_DATA[progress_id]['error'] = "Could not create output video file"
-            PROGRESS_DATA[progress_id]['status'] = "Error: Could not create output video file"
-            cap.release()
-            return False
-            
-        frame_count = 0
-        
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+        try:
+            # Try to use system fonts
+            system_fonts = [
+                "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
+                "C:/Windows/Fonts/Arial.ttf"  # Windows
+            ]
                 
-            # Calculate progress
-            progress = min(95, int((frame_count / total_frames) * 100))
-            PROGRESS_DATA[progress_id]['progress'] = progress
-            PROGRESS_DATA[progress_id]['status'] = f"Processing video: {progress}%"
+            for font_path in system_fonts:
+                if os.path.exists(font_path):
+                    font = ImageFont.truetype(font_path, 50)  # Reduced font size
+                    break
+            else:
+                font = ImageFont.load_default()
+        except:
+            font = ImageFont.load_default()
             
-            # Resize frame if needed
-            if width != orig_width or height != orig_height:
-                frame = cv2.resize(frame, (width, height))
-            
-            # Convert BGR to RGB for blending
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-            # Blend with overlay
-            blended = overlay_image(frame_rgb, overlay_image_np)
-            
-            # Convert back to BGR for output
-            blended_bgr = cv2.cvtColor(blended, cv2.COLOR_RGB2BGR)
-            
-            # Write frame
-            out.write(blended_bgr)
-            
-            frame_count += 1
-            
-        # Release resources
-        cap.release()
-        out.release()
+        # Draw username in the center bottom area
+        try:
+            # For newer Pillow versions
+            bbox = font.getbbox(username)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        except:
+            # Fallback to a simple estimate
+            text_width = len(username) * 20
+            text_height = 30
         
-        # Verify output
+        position = ((img.width - text_width) // 2, (img.height - text_height) * 3//4)
+        draw.text(position, username, font=font, fill=(255, 255, 255, 255))
+        
+        # Save the modified overlay to a temporary file
+        named_overlay_path = overlay_path.replace('.png', f'_{username}.png')
+        img.save(named_overlay_path)
+        
+        # Update progress
+        PROGRESS_DATA[progress_id]['progress'] = 50
+        PROGRESS_DATA[progress_id]['status'] = "Creating video overlay..."
+        
+        # Create the overlay clip
+        overlay = (ImageClip(named_overlay_path)
+                  .set_duration(video.duration)
+                  .set_position(("center", "center")))
+                  
+        if width != orig_width or height != orig_height:
+            overlay = overlay.resize((width, height))
+                  
+        # Update progress
+        PROGRESS_DATA[progress_id]['progress'] = 70
+        PROGRESS_DATA[progress_id]['status'] = "Compositing video and overlay..."
+            
+        # Create the final composite
+        final = CompositeVideoClip([video, overlay])
+        
+        # Update progress
+        PROGRESS_DATA[progress_id]['progress'] = 80
+        PROGRESS_DATA[progress_id]['status'] = "Writing output video..."
+        
+        # Write the output file
+        final.write_videofile(output_video, codec="libx264", audio_codec="aac", 
+                            logger=None, verbose=False)  # Disable verbose output
+        
+        # Clean up
+        video.close()
+        final.close()
+        
+        # Remove temporary file
+        if os.path.exists(named_overlay_path):
+            os.remove(named_overlay_path)
+            
+        # Update progress
         if os.path.exists(output_video) and os.path.getsize(output_video) > 0:
             PROGRESS_DATA[progress_id]['progress'] = 100
             PROGRESS_DATA[progress_id]['status'] = "Complete"
@@ -167,50 +205,36 @@ def process_video_with_cv2(input_video, output_video, overlay_image_np, progress
             return False
             
     except Exception as e:
-        error_msg = f"OpenCV processing error: {str(e)}"
+        error_msg = f"MoviePy processing error: {str(e)}"
         print(error_msg)
         PROGRESS_DATA[progress_id]['error'] = error_msg
         PROGRESS_DATA[progress_id]['status'] = f"Error: {error_msg}"
         
         # Create a static image fallback
-        return generate_static_fallback(input_video, output_video, progress_id, width, height)
+        return generate_static_fallback_with_pil(input_video, output_video, username, progress_id)
 
-def generate_static_fallback(video_path, output_path, progress_id, target_width=None, target_height=None):
-    """Generate a static image with the first frame and username as fallback"""
+def generate_static_fallback_with_pil(video_path, output_path, username, progress_id):
+    """Generate a static image with the first frame and username as fallback using PIL"""
     try:
-        username = PROGRESS_DATA[progress_id]['username']
         PROGRESS_DATA[progress_id]['status'] = "Creating fallback image..."
         
-        # Try to extract first frame from video
-        cap = cv2.VideoCapture(video_path)
-        ret, frame = cap.read()
-        
-        # Get original dimensions
-        if ret:
-            orig_width = frame.shape[1]
-            orig_height = frame.shape[0]
-        else:
+        # Try to extract first frame from video using MoviePy
+        try:
+            video = VideoFileClip(video_path)
+            frame = video.get_frame(0)  # Get the first frame
+            width, height = video.size
+            video.close()
+        except:
             # Default dimensions if can't read frame
-            orig_width = 800
-            orig_height = 600
-            
-        cap.release()
+            width, height = 800, 600
+            frame = None
         
-        # Use target dimensions or original if not provided
-        width = target_width if target_width is not None else orig_width
-        height = target_height if target_height is not None else orig_height
-        
-        if not ret:
+        if frame is None:
             # Create a blank image
             img = Image.new('RGB', (width, height), (0, 0, 0))
         else:
-            # Resize frame if needed
-            if width != orig_width or height != orig_height:
-                frame = cv2.resize(frame, (width, height))
-                
-            # Convert frame to PIL Image
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(frame_rgb)
+            # Convert numpy array to PIL Image
+            img = Image.fromarray(frame)
         
         # Add text
         draw = ImageDraw.Draw(img)
@@ -240,88 +264,21 @@ def generate_static_fallback(video_path, output_path, progress_id, target_width=
 def process_video(username, video_path, frame_path, output_path, progress_id):
     """Process video in a separate thread"""
     try:
-        # Check if files exist
-        if not os.path.exists(video_path):
-            try:
-                # Create a simple test video using OpenCV - use smaller dimensions
-                width, height = 320, 240  # Half of the standard 640x480
-                fps = 30
-                duration = 3  # seconds
-                
-                # Create a blank video with blue background
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                out = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
-                
-                if not out.isOpened():
-                    PROGRESS_DATA[progress_id]['error'] = "Could not create test video file"
-                    PROGRESS_DATA[progress_id]['status'] = "Error: Could not create test video"
-                    return JsonResponse({'error': 'Could not create test video'}, status=500)
-                    
-                # Create frames with text
-                for i in range(int(fps * duration)):
-                    # Create a blue frame
-                    frame = np.zeros((height, width, 3), dtype=np.uint8)
-                    frame[:, :] = (255, 0, 0)  # BGR format
-                    
-                    # Add text
-                    cv2.putText(frame, 'Test Video', (width//4, height//2), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    
-                    # Write frame
-                    out.write(frame)
-                    
-                out.release()
-                print(f"Created test video at {video_path} with dimensions {width}x{height}")
-            except Exception as e:
-                error_msg = f"Error creating test video: {str(e)}"
-                print(error_msg)
-                PROGRESS_DATA[progress_id]['error'] = error_msg
-                PROGRESS_DATA[progress_id]['status'] = f"Error: {error_msg}"
-                return JsonResponse({'error': error_msg}, status=500)
-        
-        if not os.path.exists(frame_path):
-            try:
-                # Create a simple overlay PNG with transparency - smaller size
-                overlay_width, overlay_height = 400, 300  # Half of 800x600
-                overlay = Image.new('RGBA', (overlay_width, overlay_height), (0, 0, 0, 0))
-                draw = ImageDraw.Draw(overlay)
-                
-                # Add a semi-transparent rectangle
-                draw.rectangle([(50, 50), (350, 250)], fill=(255, 255, 255, 128))
-                
-                # Add text placeholder
-                font = ImageFont.load_default()
-                draw.text((overlay_width//2, overlay_height//2), "USERNAME", font=font, fill=(0, 0, 0, 255))
-                
-                # Save the overlay
-                overlay.save(frame_path)
-                print(f"Created overlay image at {frame_path} with dimensions {overlay_width}x{overlay_height}")
-            except Exception as e:
-                error_msg = f"Error creating overlay image: {str(e)}"
-                print(error_msg)
-                PROGRESS_DATA[progress_id]['error'] = error_msg
-                PROGRESS_DATA[progress_id]['status'] = f"Error: {error_msg}"
-                return
-        
         # Update progress
         PROGRESS_DATA[progress_id]['progress'] = 5
-        PROGRESS_DATA[progress_id]['status'] = "Getting video information..."
+        PROGRESS_DATA[progress_id]['status'] = "Determining video dimensions..."
         
-        # Get video dimensions
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            error_msg = "Could not open video file to get dimensions"
-            print(error_msg)
-            PROGRESS_DATA[progress_id]['error'] = error_msg
-            PROGRESS_DATA[progress_id]['status'] = f"Error: {error_msg}"
-            return
-            
-        original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cap.release()
+        # Get video dimensions using MoviePy
+        try:
+            video = VideoFileClip(video_path)
+            original_width, original_height = video.size
+            video.close()
+        except Exception as e:
+            print(f"Error reading video dimensions: {str(e)}")
+            # Default dimensions if can't read
+            original_width, original_height = 640, 480
         
-        # Calculate half size dimensions
+        # Calculate reduced size dimensions (to about 1/3 of original)
         width = original_width // 3
         height = original_height // 3
         
@@ -329,29 +286,12 @@ def process_video(username, video_path, frame_path, output_path, progress_id):
         print(f"Original video dimensions: {original_width}x{original_height}")
         print(f"Resized video dimensions: {width}x{height}")
         
-        video_size = (width, height)
-        
-        # Update progress
-        PROGRESS_DATA[progress_id]['progress'] = 10
-        PROGRESS_DATA[progress_id]['status'] = "Creating overlay image..."
-        
-        # Create overlay with username
-        try:
-            overlay_np = create_named_overlay(frame_path, username, video_size)
-            print(f"Overlay shape: {overlay_np.shape}")
-        except Exception as e:
-            error_msg = f"Error creating overlay: {str(e)}"
-            print(error_msg)
-            PROGRESS_DATA[progress_id]['error'] = error_msg
-            PROGRESS_DATA[progress_id]['status'] = f"Error: {error_msg}"
-            return
-        
         # Update progress
         PROGRESS_DATA[progress_id]['progress'] = 20
-        PROGRESS_DATA[progress_id]['status'] = "Processing video with OpenCV..."
+        PROGRESS_DATA[progress_id]['status'] = "Processing video with MoviePy..."
         
-        # Process video with half-size dimensions
-        success = process_video_with_cv2(video_path, output_path, overlay_np, progress_id, width, height)
+        # Process video with reduced size dimensions
+        success = process_video_with_moviepy(video_path, output_path, frame_path, username, progress_id, width, height)
         
         if success:
             PROGRESS_DATA[progress_id]['ready'] = True
@@ -407,38 +347,35 @@ def start_process(request):
         # Create placeholder files if they don't exist
         if not os.path.exists(video_path):
             try:
-                # Create a simple test video using OpenCV - use smaller dimensions
+                # Create a simple test video using MoviePy - use smaller dimensions
                 width, height = 320, 240  # Half of the standard 640x480
-                fps = 30
                 duration = 3  # seconds
                 
                 print(f"Creating test video at {video_path} with dimensions {width}x{height}")
                 
-                # Create a blank video with blue background
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                out = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
+                # Create a blank clip with blue background
+                from moviepy.editor import ColorClip, TextClip, CompositeVideoClip
                 
-                if not out.isOpened():
-                    error_msg = "Could not create test video file"
-                    print(error_msg)
-                    PROGRESS_DATA[progress_id]['error'] = error_msg
-                    PROGRESS_DATA[progress_id]['status'] = "Error: Could not create test video"
-                    return JsonResponse({'error': 'Could not create test video'}, status=500)
-                    
-                # Create frames with text
-                for i in range(int(fps * duration)):
-                    # Create a blue frame
-                    frame = np.zeros((height, width, 3), dtype=np.uint8)
-                    frame[:, :] = (255, 0, 0)  # BGR format
-                    
-                    # Add text
-                    cv2.putText(frame, 'Test Video', (width//4, height//2), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    
-                    # Write frame
-                    out.write(frame)
-                    
-                out.release()
+                # Create a blue background clip
+                background = ColorClip(size=(width, height), color=(0, 0, 255), duration=duration)
+                
+                # Create a text clip
+                text = (TextClip("Test Video", fontsize=30, color='white', font='Arial')
+                       .set_position('center')
+                       .set_duration(duration))
+                
+                # Combine the clips
+                video_clip = CompositeVideoClip([background, text])
+                
+                # Write to file
+                video_clip.write_videofile(video_path, codec='libx264', audio=False, 
+                                          verbose=False, logger=None)
+                
+                # Clean up
+                video_clip.close()
+                background.close()
+                text.close()
+                
                 print(f"Successfully created test video at {video_path}")
             except Exception as e:
                 error_msg = f"Error creating test video: {str(e)}"

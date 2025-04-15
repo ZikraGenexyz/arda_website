@@ -1,9 +1,14 @@
 {
+    "version": 2,
     "builds": [
     {
       "src": "arda_website/wsgi.py",
       "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb", "runtime": "python3.12" }
+      "config": { 
+        "maxLambdaSize": "15mb", 
+        "runtime": "python3.12",
+        "excludeFiles": ["venv/**", "__pycache__/**"]
+      }
     },
     {
       "src": "build.sh",
@@ -22,5 +27,11 @@
         "src": "/(.*)",
         "dest": "arda_website/wsgi.py"
     }
-    ]
+    ],
+    "functions": {
+      "arda_website/wsgi.py": {
+        "memory": 1024,
+        "maxDuration": 10
+      }
+    }
 }

@@ -6,14 +6,13 @@ Django==5.2
 idna==3.10
 imageio==2.37.0
 imageio-ffmpeg==0.6.0
+moviepy==1.0.3
 numpy==2.2.4
-opencv-python==4.11.0.86
-pillow==10.4.0
+pillow==11.2.1
 proglog==0.1.11
-python-dotenv==1.1.0
 requests==2.32.3
 sqlparse==0.5.3
 tqdm==4.67.1
 urllib3==2.4.0
-whitenoise>=6.0.0
 psycopg2-binary>=2.9.9
+whitenoise>=6.0.0
