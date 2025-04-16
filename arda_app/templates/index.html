@@ -88,90 +88,77 @@
             100% { transform: rotate(360deg); }
         }
         
-        .progress-animation {
+        .progress-container {
             width: 100%;
-            height: 10px;
+            height: 20px;
             background: #eee;
-            border-radius: 5px;
+            border-radius: 10px;
             overflow: hidden;
             margin-top: 15px;
             position: relative;
         }
         
-        .progress-animation::after {
-            content: '';
-            position: absolute;
-            left: -50%;
-            width: 50%;
+        .progress-bar {
             height: 100%;
-            background: linear-gradient(to right, transparent, #4a6cf7, transparent);
-            animation: progressAnim 2s linear infinite;
-        }
-        
-        @keyframes progressAnim {
-            0% { left: -50%; }
-            100% { left: 100%; }
-        }
-        
-        .steps {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            position: relative;
-        }
-        
-        .steps::before {
-            content: '';
-            position: absolute;
-            top: 15px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: #eee;
-            z-index: 1;
-        }
-        
-        .step {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-            background: white;
-            padding: 0 10px;
-        }
-        
-        .step .dot {
-            width: 30px;
-            height: 30px;
-            background: #eee;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 auto 5px;
-            font-weight: bold;
-            color: #aaa;
-            transition: all 0.3s;
-        }
-        
-        .step.active .dot {
             background: #4a6cf7;
-            color: white;
-            transform: scale(1.1);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
         }
         
-        .step p {
-            font-size: 0.8rem;
-            margin: 5px 0 0;
-            color: #888;
-        }
-        
-        .step.active p {
-            color: #4a6cf7;
+        .progress-text {
+            margin-top: 8px;
             font-weight: bold;
+            font-size: 1rem;
+            color: #4a6cf7;
         }
         
-        /* Download Complete Notification */
+        /* Animated check mark */
+        .check-circle {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            margin: 15px auto;
+            display: none;
+        }
+        
+        .check-circle.show {
+            display: block;
+        }
+        
+        .check-circle-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #4a6cf7;
+            opacity: 0;
+            transform: scale(0);
+            animation: circleExpand 0.5s forwards;
+        }
+        
+        @keyframes circleExpand {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .check-mark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            color: white;
+            font-size: 2.5rem;
+            animation: checkAppear 0.5s 0.3s forwards;
+        }
+        
+        @keyframes checkAppear {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(-45deg); }
+            70% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+        }
+        
         .download-complete {
             display: none;
             position: fixed;
@@ -194,12 +181,6 @@
         @keyframes slideUp {
             from { transform: translate(-50%, 100px); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        .download-icon {
-            display: inline-block;
-            margin-right: 10px;
-            font-size: 1.3rem;
         }
         
         .back-button {
@@ -227,28 +208,23 @@
         <div class="username">{{ username }}</div>
         
         <p>We're creating a personalized video just for you!</p>
-        <p>Your download will start automatically in a few moments.</p>
+        <p>Your download will start automatically once the video is ready.</p>
         
         <div class="processing">
             <div class="spinner"></div>
             <div>Processing your video...</div>
             
-            <div class="steps">
-                <div class="step step-1 active">
-                    <div class="dot">1</div>
-                    <p>Preparing</p>
-                </div>
-                <div class="step step-2">
-                    <div class="dot">2</div>
-                    <p>Creating</p>
-                </div>
-                <div class="step step-3">
-                    <div class="dot">3</div>
-                    <p>Finalizing</p>
-                </div>
+            <!-- Add the animated check mark (initially hidden) -->
+            <div class="check-circle" id="checkCircle">
+                <div class="check-circle-bg"></div>
+                <div class="check-mark">✓</div>
             </div>
             
-            <div class="progress-animation"></div>
+            <!-- Real progress bar replacing the stages UI -->
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
         </div>
         
         <a href="/" class="back-button" id="backButton" style="display: none;">Back to Home</a>
@@ -261,101 +237,126 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Get the steps
-            const steps = document.querySelectorAll('.step');
-            const stepDelay = 1000; // Time between steps in ms
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
             const downloadNotification = document.getElementById('downloadComplete');
             const backButton = document.getElementById('backButton');
+            const checkCircle = document.getElementById('checkCircle');
+            const spinner = document.querySelector('.spinner');
             
-            // Activate subsequent steps with delay
-            setTimeout(() => {
-                steps[1].classList.add('active');
-            }, stepDelay);
+            // Get user ID from the template
+            const userId = "{{ id }}";
+            let downloadStarted = false;
+            let downloadComplete = false;
             
-            setTimeout(() => {
-                steps[2].classList.add('active');
-            }, stepDelay * 2);
+            // Check immediately if the video is already ready
+            checkInitialStatus();
             
-            // Start download after steps are completed
-            setTimeout(function() {
-                // Instead of iframe, use fetch to get a head start on the request
-                // This will allow us to know exactly when the server responds
-                // and the download is ready
-                
-                const downloadUrl = "{% url 'home' %}?username={{ username }}&download=true";
-                
-                // Show that we're processing
-                showProcessingVideo();
-                
-                // Use fetch with blob response type to properly handle the video download
-                fetch(downloadUrl)
-                    .then(response => {
-                        // Check if we got a JSON error response
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
-                            return response.json().then(data => {
-                                throw new Error(data.error || 'Server returned an error');
-                            });
+            // Start polling for progress updates
+            const progressInterval = setInterval(checkProgress, 500);
+            
+            // Initial check for video status
+            function checkInitialStatus() {
+                fetch(`/progress/?id=${userId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const progress = data.progress;
+                        const isReady = data.is_ready;
+                        
+                        // Update the progress bar with the current progress
+                        updateProgressBar(progress);
+                        
+                        // If the video is already ready, start the download immediately
+                        if (isReady) {
+                            console.log('Video is already ready from initial check');
+                            // Show 100% progress
+                            updateProgressBar(100);
+                            // Start the download
+                            initiateDownload();
+                            // Show download success UI
+                            setTimeout(function() {
+                                downloadComplete = true;
+                                showDownloadSuccess();
+                            }, 1000);
+                        } else {
+                            // If video is not ready yet, initiate a new download process
+                            initiateDownload();
                         }
-                        
-                        // Only proceed if we got a successful response
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! Status: ${response.status}`);
-                        }
-                        
-                        // Check if it's a video response
-                        if (!contentType || !contentType.includes('video/mp4')) {
-                            throw new Error('Server did not return a video file');
-                        }
-                        
-                        // At this point we know we have a valid video response
-                        // Show the download is starting notification
-                        showDownloadSuccess();
-                        
-                        // Return the blob data to be processed
-                        return response.blob();
-                    })
-                    .then(blob => {
-                        // Make sure we got a blob with content
-                        if (!blob || blob.size === 0) {
-                            throw new Error('Empty video file received');
-                        }
-                        
-                        // Create a downloadable link for the blob
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = url;
-                        a.download = `overlay_{{ username }}.mp4`;
-                        document.body.appendChild(a);
-                        
-                        // Trigger the download
-                        a.click();
-                        
-                        // Clean up
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
                     })
                     .catch(error => {
-                        console.error('Download error:', error);
-                        showDownloadError(error.message);
+                        console.error('Error checking initial status:', error);
+                        // Initiate download anyway as fallback
+                        initiateDownload();
                     });
-            }, stepDelay * 2.5);
+            }
             
-            function showProcessingVideo() {
-                // Update processing message to be more specific
-                const processingDiv = document.querySelector('.processing div:nth-child(2)');
-                if (processingDiv) {
-                    processingDiv.textContent = 'Generating your personalized video...';
+            function checkProgress() {
+                fetch(`/progress/?id=${userId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const progress = data.progress;
+                        const isReady = data.is_ready;
+                        updateProgressBar(progress);
+                        
+                        // If the video is already generated and ready for download
+                        if (isReady && !downloadStarted) {
+                            console.log('Video is already ready, downloading immediately');
+                            initiateDownload();
+                        }
+                        
+                        // If progress is 100%, we know the video is ready and downloading is complete
+                        if (progress >= 100 && !downloadComplete) {
+                            downloadComplete = true;
+                            showDownloadSuccess();
+                            clearInterval(progressInterval);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching progress:', error);
+                    });
+            }
+            
+            function updateProgressBar(progress) {
+                // Set the width of the progress bar
+                progressBar.style.width = `${progress}%`;
+                
+                // Round the percentage to an integer and update the text
+                progressText.textContent = `${Math.round(progress)}%`;
+            }
+            
+            function initiateDownload() {
+                if (downloadStarted) {
+                    return; // Prevent multiple download attempts
                 }
+                
+                downloadStarted = true;
+                const downloadUrl = `{% url 'home' %}?id={{ id }}&download=true`;
+                
+                // Create an iframe to trigger the download without navigating away
+                const downloadFrame = document.createElement('iframe');
+                downloadFrame.style.display = 'none';
+                downloadFrame.src = downloadUrl;
+                document.body.appendChild(downloadFrame);
+                
+                // Log that download has been initiated
+                console.log('Download initiated');
             }
             
             function showDownloadSuccess() {
+                // Hide spinner and show check mark
+                spinner.style.display = 'none';
+                checkCircle.classList.add('show');
+                
+                // Update processing message
+                const processingDiv = document.querySelector('.processing div:nth-child(2)');
+                if (processingDiv) {
+                    processingDiv.textContent = 'Video processing completed!';
+                }
+                
+                // Show download notification
                 downloadNotification.style.display = 'block';
-                downloadNotification.innerHTML = '<span style="margin-right: 10px;">⬇️</span>Your download is starting...<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">Check your downloads folder</div>';
+                downloadNotification.innerHTML = '<span style="margin-right: 10px;">✅</span>Your download is complete!<div style="font-size: 0.8rem; opacity: 0.9; margin-top: 5px;">Check your downloads folder</div>';
                 downloadNotification.style.backgroundColor = '#4a6cf7';
-                backButton.style.display = 'inline-block';
-                backButton.textContent = 'Create Another Video';
                 
                 // Hide notification after 8 seconds
                 setTimeout(function() {
