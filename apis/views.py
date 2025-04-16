@@ -7,6 +7,7 @@ from arda_app.serializers import UserSerializer
 # Create your views here.
 @api_view(['POST'])
 def create_user(request):
+    print(request.data)
     serializer = UserSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
