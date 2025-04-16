@@ -237,36 +237,35 @@ def home(request):
         
         # Serve file directly for download
         try:
-            with open(output_video_path, 'rb') as f:
-                response = FileResponse(f)
-                response['Content-Type'] = 'video/mp4'
-                response['Content-Disposition'] = f'attachment; filename="overlay_{username}.mp4"'
-                # Add cache control headers to prevent caching
-                response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response['Pragma'] = 'no-cache'
-                response['Expires'] = '0'
-                
-                print(f"Serving download for {username}, file size: {os.path.getsize(output_video_path)} bytes")
-                
-                # Schedule cleanup of temporary files
-                def delayed_cleanup():
-                    time.sleep(60)  # Wait before cleaning up
-                    try:
-                        if os.path.exists(named_frame_path):
-                            os.remove(named_frame_path)
-                        if os.path.exists(output_video_path):
-                            os.remove(output_video_path)
-                        if os.path.exists(temp_dir):
-                            os.rmdir(temp_dir)
-                        print(f"Cleanup completed for {username}")
-                    except Exception as e:
-                        print(f"Cleanup error: {str(e)}")
-                
-                cleanup_thread = threading.Thread(target=delayed_cleanup)
-                cleanup_thread.daemon = True
-                cleanup_thread.start()
-                
-                return response
+            f = open(output_video_path, 'rb')  # keep the file open
+            response = FileResponse(f)
+            response['Content-Type'] = 'video/mp4'
+            response['Content-Disposition'] = f'attachment; filename="overlay_{username}.mp4"'
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+
+            print(f"Serving download for {username}, file size: {os.path.getsize(output_video_path)} bytes")
+
+            # Schedule cleanup of temporary files
+            def delayed_cleanup():
+                time.sleep(60)  # Wait before cleaning up
+                try:
+                    if os.path.exists(named_frame_path):
+                        os.remove(named_frame_path)
+                    if os.path.exists(output_video_path):
+                        os.remove(output_video_path)
+                    if os.path.exists(temp_dir):
+                        os.rmdir(temp_dir)
+                    print(f"Cleanup completed for {username}")
+                except Exception as e:
+                    print(f"Cleanup error: {str(e)}")
+
+            cleanup_thread = threading.Thread(target=delayed_cleanup)
+            cleanup_thread.daemon = True
+            cleanup_thread.start()
+
+            return response
         except Exception as e:
             print(f"File response error: {str(e)}")
             raise
