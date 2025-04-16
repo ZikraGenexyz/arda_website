@@ -47,6 +47,8 @@ def home(request):
             os.path.join(base_dir, '../arda_website/staticfiles'),      # Django project staticfiles
             '/var/task/arda_app/static',                                # Vercel path
             '/var/task/static',                                         # Vercel alternative path
+            '/var/task/public',                                         # Vercel public dir
+            '/public',                                                  # Vercel public dir (root)
             '/tmp/static'                                               # Temp dir as fallback
         ]
         
@@ -89,6 +91,29 @@ def home(request):
             for static_dir in static_dirs:
                 debug_info += f"- {static_dir}/video/liolio.mp4 exists: {os.path.exists(os.path.join(static_dir, 'video', 'liolio.mp4'))}\n"
             
+            # List all files in the top directories that might contain our files
+            debug_info += "\nDirectory listings:\n"
+            try:
+                debug_info += "Files in /var/task:\n"
+                if os.path.exists('/var/task'):
+                    debug_info += str(os.listdir('/var/task')) + "\n"
+                else:
+                    debug_info += "Directory doesn't exist\n"
+                
+                debug_info += "Files in /public:\n"
+                if os.path.exists('/public'):
+                    debug_info += str(os.listdir('/public')) + "\n"
+                else:
+                    debug_info += "Directory doesn't exist\n"
+                    
+                debug_info += "Files in /var/task/public:\n"
+                if os.path.exists('/var/task/public'):
+                    debug_info += str(os.listdir('/var/task/public')) + "\n"
+                else:
+                    debug_info += "Directory doesn't exist\n"
+            except Exception as e:
+                debug_info += f"Error listing directories: {str(e)}\n"
+            
             raise FileNotFoundError(f"Video file not found in any of the checked locations.{debug_info}")
         
         if not frame_path:
@@ -96,6 +121,18 @@ def home(request):
             debug_info = "\nChecked directories:\n"
             for static_dir in static_dirs:
                 debug_info += f"- {static_dir}/image/frame.png exists: {os.path.exists(os.path.join(static_dir, 'image', 'frame.png'))}\n"
+            
+            # List all files in the top directories that might contain our files
+            debug_info += "\nDirectory listings:\n"
+            try:
+                for static_dir in static_dirs:
+                    if os.path.exists(static_dir):
+                        image_dir = os.path.join(static_dir, 'image')
+                        if os.path.exists(image_dir):
+                            debug_info += f"Files in {image_dir}:\n"
+                            debug_info += str(os.listdir(image_dir)) + "\n"
+            except Exception as e:
+                debug_info += f"Error listing directories: {str(e)}\n"
             
             raise FileNotFoundError(f"Frame image not found in any of the checked locations.{debug_info}")
         
