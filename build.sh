@@ -3,11 +3,6 @@
 # Make the script exit on failures
 set -e
 
-# Install system dependencies
-echo "Installing system dependencies..."
-apt-get update -y
-apt-get install -y --no-install-recommends ffmpeg
-
 # Install Python dependencies
 echo "Installing Python dependencies..."
 pip install -r requirements.txt
