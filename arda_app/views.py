@@ -15,6 +15,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 # Import FFmpeg for video processing
 import ffmpeg
+import importlib.util
+import shutil
 
 # Add compatibility for newer PIL versions (PIL.Image.ANTIALIAS is deprecated)
 # In newer Pillow versions, ANTIALIAS was removed and replaced with LANCZOS
@@ -26,6 +28,104 @@ PROGRESS_DATA = {}
 DOWNLOAD_DATA = {}
 # Store output video paths for quick access on reconnection
 VIDEO_PATHS = {}
+
+# Function to check if a command is available
+def is_command_available(command):
+    """Check if a command is available on the system path or in the current directory."""
+    # First check if it's on the system path
+    if shutil.which(command):
+        return True
+    
+    # Then check if it's in the current working directory
+    current_dir = os.getcwd()
+    command_path = os.path.join(current_dir, command)
+    if os.path.isfile(command_path) and os.access(command_path, os.X_OK):
+        # Add the current directory to PATH if it's not already there
+        if current_dir not in os.environ.get('PATH', '').split(os.pathsep):
+            os.environ['PATH'] = current_dir + os.pathsep + os.environ.get('PATH', '')
+        return True
+        
+    # Also check for Windows .exe extension
+    if os.name == 'nt' and not command.endswith('.exe'):
+        return is_command_available(f"{command}.exe")
+        
+    return False
+
+# Check if ffmpeg is available
+def is_ffmpeg_available():
+    """Check if FFmpeg and ffprobe are available."""
+    return is_command_available('ffmpeg') and is_command_available('ffprobe')
+
+# Check if imageio_ffmpeg is available as a fallback
+def get_ffmpeg_path_from_imageio():
+    """Try to get ffmpeg path from imageio-ffmpeg if available."""
+    try:
+        if importlib.util.find_spec("imageio_ffmpeg") is not None:
+            from imageio_ffmpeg import get_ffmpeg_exe
+            ffmpeg_path = get_ffmpeg_exe()
+            # Add the directory containing ffmpeg to PATH
+            ffmpeg_dir = os.path.dirname(ffmpeg_path)
+            if ffmpeg_dir not in os.environ.get('PATH', '').split(os.pathsep):
+                os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
+            return True
+    except Exception as e:
+        print(f"Could not get ffmpeg from imageio: {e}")
+    return False
+
+# Check for FFmpeg in Vercel deployment
+def check_vercel_ffmpeg():
+    """Check for FFmpeg in Vercel deployment directory."""
+    vercel_bin_dir = os.path.join(os.getcwd(), '.vercel', 'bin')
+    if os.path.isdir(vercel_bin_dir):
+        print(f"Found Vercel bin directory: {vercel_bin_dir}")
+        # Add Vercel bin directory to PATH
+        if vercel_bin_dir not in os.environ.get('PATH', '').split(os.pathsep):
+            os.environ['PATH'] = vercel_bin_dir + os.pathsep + os.environ.get('PATH', '')
+        
+        # Check again if FFmpeg is available after adding to PATH
+        if is_command_available('ffmpeg') and is_command_available('ffprobe'):
+            print("FFmpeg found in Vercel bin directory")
+            return True
+        else:
+            print("FFmpeg not found in Vercel bin directory even after adding to PATH")
+    else:
+        print("No Vercel bin directory found")
+    
+    # Check alternative locations in Vercel environment
+    var_task_bin = '/var/task/.vercel/bin'
+    if os.path.isdir(var_task_bin):
+        print(f"Found /var/task/.vercel/bin directory")
+        if var_task_bin not in os.environ.get('PATH', '').split(os.pathsep):
+            os.environ['PATH'] = var_task_bin + os.pathsep + os.environ.get('PATH', '')
+        
+        if is_command_available('ffmpeg') and is_command_available('ffprobe'):
+            print("FFmpeg found in /var/task/.vercel/bin")
+            return True
+    
+    return False
+
+# Initialize ffmpeg availability
+FFMPEG_AVAILABLE = is_ffmpeg_available()
+if not FFMPEG_AVAILABLE:
+    print("FFmpeg not found in PATH, checking Vercel deployment")
+    FFMPEG_AVAILABLE = check_vercel_ffmpeg()
+    
+if not FFMPEG_AVAILABLE:
+    print("FFmpeg not found in Vercel, trying to use imageio-ffmpeg")
+    FFMPEG_AVAILABLE = get_ffmpeg_path_from_imageio()
+
+if not FFMPEG_AVAILABLE:
+    print("WARNING: FFmpeg is not available. Video processing features will be limited.")
+    # Print current PATH for debugging
+    print(f"Current PATH: {os.environ.get('PATH', 'Not set')}")
+    # List directories to check if FFmpeg binaries exist
+    try:
+        for path in os.environ.get('PATH', '').split(os.pathsep):
+            if os.path.exists(path):
+                print(f"Contents of {path}:")
+                print(os.listdir(path))
+    except Exception as e:
+        print(f"Error listing PATH directories: {e}")
 
 def get_progress(request):
     """API endpoint to get the current progress for a specific user"""
@@ -185,26 +285,32 @@ def home(request):
         img = Image.open(frame_path).convert("RGBA")
         
         # Get video info using ffprobe
-        probe = ffmpeg.probe(video_path)
-        video_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
-        
-        if video_info:
-            # Get original video dimensions
-            video_width = int(video_info['width'])
-            video_height = int(video_info['height'])
-            duration = float(video_info.get('duration', 0))
-            fps = eval(video_info.get('r_frame_rate', '24/1'))
-            if isinstance(fps, tuple):
-                fps = fps[0] / fps[1]
-            
-            print(f"Video dimensions: {video_width}x{video_height}")
-            
-            # Resize the overlay to match video dimensions
-            img = img.resize((video_width, video_height))
-            print(f"Overlay dimensions: {img.width}x{img.height}")
-        else:
+        try:
+            if FFMPEG_AVAILABLE:
+                probe = ffmpeg.probe(video_path)
+                video_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+                
+                if video_info:
+                    # Get original video dimensions
+                    video_width = int(video_info['width'])
+                    video_height = int(video_info['height'])
+                    duration = float(video_info.get('duration', 0))
+                    fps = eval(video_info.get('r_frame_rate', '24/1'))
+                    if isinstance(fps, tuple):
+                        fps = fps[0] / fps[1]
+                    
+                    print(f"Video dimensions: {video_width}x{video_height}")
+                    
+                    # Resize the overlay to match video dimensions
+                    img = img.resize((video_width, video_height))
+                    print(f"Overlay dimensions: {img.width}x{img.height}")
+                else:
+                    raise Exception("No video streams found")
+            else:
+                raise Exception("FFmpeg not available")
+        except Exception as e:
             # Fallback values
-            print("Warning: Could not get video info from ffprobe, using defaults")
+            print(f"Warning: Could not get video info from ffprobe: {str(e)}, using defaults")
             video_width, video_height = 1280, 720
             duration = 10
             fps = 24
@@ -391,28 +497,31 @@ def home(request):
                 print(f"Output video: {output_video_path}")
                 
                 try:
-                    # Start FFmpeg process
-                    process = subprocess.Popen(
-                        ffmpeg_cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        universal_newlines=False
-                    )
-                    
-                    # Start monitoring progress in a separate thread
-                    monitor_thread = threading.Thread(
-                        target=monitor_ffmpeg_progress,
-                        args=(process, user_id, duration)
-                    )
-                    monitor_thread.daemon = True
-                    monitor_thread.start()
-                    
-                    # Wait for FFmpeg to finish
-                    process.wait()
-                    
-                    # Check if FFmpeg was successful
-                    if process.returncode != 0:
-                        raise Exception(f"FFmpeg exited with error code {process.returncode}")
+                    if FFMPEG_AVAILABLE:
+                        # Start FFmpeg process
+                        process = subprocess.Popen(
+                            ffmpeg_cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            universal_newlines=False
+                        )
+                        
+                        # Start monitoring progress in a separate thread
+                        monitor_thread = threading.Thread(
+                            target=monitor_ffmpeg_progress,
+                            args=(process, user_id, duration)
+                        )
+                        monitor_thread.daemon = True
+                        monitor_thread.start()
+                        
+                        # Wait for FFmpeg to finish
+                        process.wait()
+                        
+                        # Check if FFmpeg was successful
+                        if process.returncode != 0:
+                            raise Exception(f"FFmpeg exited with error code {process.returncode}")
+                    else:
+                        raise Exception("FFmpeg command not available, falling back to ffmpeg-python")
                 except Exception as e:
                     print(f"Error with subprocess FFmpeg: {str(e)}")
                     print("Falling back to ffmpeg-python library")

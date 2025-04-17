@@ -1,26 +1,34 @@
 {
+  "version": 2,
   "builds": [
-  {
-    "src": "arda_website/wsgi.py",
-    "use": "@vercel/python",
-    "config": { "maxLambdaSize": "15mb", "runtime": "python3.12" }
-  },
-  {
-    "src": "build.sh",
-    "use": "@vercel/static-build",
-    "config": {
-      "distDir": "staticfiles"
+    {
+      "src": "build.sh",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "staticfiles"
+      }
+    },
+    {
+      "src": "arda_website/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "runtime": "python3.9"
+      }
     }
-  }
   ],
   "routes": [
-  {
+    {
       "src": "/static/(.*)",
       "dest": "/static/$1"
-  },
-  {
+    },
+    {
       "src": "/(.*)",
       "dest": "arda_website/wsgi.py"
+    }
+  ],
+  "env": {
+    "DJANGO_SETTINGS_MODULE": "arda_website.settings",
+    "PATH": "/var/task/.vercel/bin:${PATH}"
   }
-  ]
 }
